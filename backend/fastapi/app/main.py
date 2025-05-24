@@ -10,16 +10,24 @@ from app.db import models, database
 from app.storage import minio_client
 from app.auth.jwt import get_current_user_id
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 
-
-
 app = FastAPI()
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(files.router)
 models.Base.metadata.create_all(bind=database.engine)
 minio_client.create_bucket()
-
 
 
 @app.post("/register")
