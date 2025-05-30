@@ -78,10 +78,22 @@ def delete_file(
     Delete a file if it belongs to the authenticated user.
     Removes file from MinIO and the database.
     """
-    db_file = db.query(models.File).filter(models.File.id == file_id, models.File.owner_id == user_id).first()
+    db_file = db.query(models.File).filter(
+        models.File.id == file_id,
+        models.File.owner_id == user_id
+    ).first()
 
     if not db_file:
         raise HTTPException(status_code=404, detail="File not found or unauthorized")
+
+    #  If file is in a folder, update folder's date_modified
+    if db_file.folder_id:
+        folder = db.query(models.Folder).filter(
+            models.Folder.id == db_file.folder_id,
+            models.Folder.owner_id == user_id
+        ).first()
+        if folder:
+            folder.date_modified = datetime.utcnow()
 
     # Delete from MinIO
     try:
@@ -143,9 +155,10 @@ class RenameFileResponse(BaseModel):
     mime_type: str
     size: int
     folder_id: Optional[int] = None
+    date_modified: Optional[datetime] = None
 
     class Config:
-        from_attributes = True  # Pydantic v2+
+        from_attributes = True
 
 
 @router.post(
@@ -167,8 +180,10 @@ def rename_file(
     if not db_file:
         raise HTTPException(status_code=404, detail="File not found or access denied")
 
-    # Rename
+    # Rename and update date_modified
     db_file.filename = payload.new_name
+    db_file.date_modified = datetime.utcnow()
+
     db.commit()
     db.refresh(db_file)
 

@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File , Query
 from app.routes import folders
+from datetime import datetime
 
 
 app = FastAPI()
@@ -73,6 +74,7 @@ def upload(
 ):
     # Validate folder_id if provided
     folder_id_int = None
+    folder = None
     if folder_id not in (None, "", "null"):
         try:
             folder_id_int = int(folder_id)
@@ -88,6 +90,7 @@ def upload(
         if not folder:
             raise HTTPException(status_code=400, detail="Folder not found or access denied")
 
+    # Upload to MinIO
     file_id = str(uuid.uuid4())
     minio_client.upload_file(file.file, file_id)
 
@@ -96,17 +99,27 @@ def upload(
     size = file.file.tell()
     file.file.seek(0)  # Reset pointer
 
+    # Create file DB record
     db_file = models.File(
         id=file_id,
         filename=file.filename,
         mime_type=file.content_type,
         size=size,
         owner_id=user_id,
-        folder_id=folder_id_int  # Associate folder if valid
+        folder_id=folder_id_int
     )
-
     db.add(db_file)
+
+    # ✅ Update folder's date_modified if applicable
+    if folder:
+        folder.date_modified = datetime.utcnow()
+
     db.commit()
     db.refresh(db_file)
 
-    return {"file_id": file_id, "mime_type": file.content_type, "size": size, "folder_id": folder_id_int}
+    return {
+        "file_id": file_id,
+        "mime_type": file.content_type,
+        "size": size,
+        "folder_id": folder_id_int
+    }
