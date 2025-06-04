@@ -2,7 +2,7 @@ import io
 import uuid
 from fastapi import Form
 from fastapi import status
-from app.routes import files 
+from app.routes import files
 from app.auth import jwt, users
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -16,7 +16,9 @@ from app.routes import folders
 from datetime import datetime
 
 
+
 app = FastAPI()
+
 
 
 # CORS configuration
@@ -29,30 +31,64 @@ app.add_middleware(
 )
 
 
+
 app.include_router(files.router)
 app.include_router(folders.router)
 models.Base.metadata.create_all(bind=database.engine)
 minio_client.create_bucket()
 
 
-@app.post("/register")
+
+@app.post("/register", summary="Register a new user", tags=["Auth"])
 def register(
-    username: str = Form(...),
-    password: str = Form(...),
+    username: str = Form(..., description="Unique username to register"),
+    password: str = Form(..., description="Password for the new user"),
     db: Session = Depends(get_db)
 ):
+    """
+    Register a new user with a unique username and password.
+
+    Args:
+        username (str): Desired username, must be unique.
+        password (str): Password for the user account.
+        db (Session): SQLAlchemy session dependency.
+
+    Raises:
+        HTTPException: If the username already exists.
+    """
+    # Check if username already exists
     db_user = users.get_user(db, username=username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
     
+    # Create new user
     users.create_user(db, username=username, password=password)
     return {"msg": "User created successfully"}
 
 
 
-@app.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@app.post("/login", summary="Login and retrieve access token", tags=["Auth"])
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate user and issue a JWT access token.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): Form data containing `username` and `password`.
+        db (Session): SQLAlchemy session dependency.
+
+    Raises:
+        HTTPException: If authentication fails.
+
+    Returns:
+        dict: Access token and token type.
+    """
+    # Retrieve user by username
     db_user = users.get_user(db, username=form_data.username)
+
+    # Validate user credentials
     if not db_user or not jwt.verify_password(form_data.password, db_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -60,13 +96,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Generate JWT access token
     access_token = jwt.create_access_token(data={"sub": db_user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 
-@app.post("/upload")
-def upload(
+@app.post("/upload_files")
+def upload_files(
     file: UploadFile = File(...),
     folder_id: str | None = Query(default=None, description="Optional folder ID to associate with the file"),
     db: Session = Depends(get_db),
@@ -110,7 +147,7 @@ def upload(
     )
     db.add(db_file)
 
-    # ✅ Update folder's date_modified if applicable
+    # Update folder's date_modified if applicable
     if folder:
         folder.date_modified = datetime.utcnow()
 
