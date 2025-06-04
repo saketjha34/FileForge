@@ -93,7 +93,7 @@ class FileDeleteResponse(BaseModel):
     message: str
 
 @router.delete(
-    "/delete/{file_id}",
+    "/myfiles/delete/{file_id}",
     summary="Delete a file by ID",
     description="Deletes a file owned by the authenticated user from both MinIO storage and the database.",
     tags=["Files"]
@@ -151,7 +151,7 @@ def delete_file(
 
 
 @router.get(
-    "/download/{file_id}", 
+    "/myfiles/download/{file_id}", 
     summary="Download your file using ID",
     description="Streams the file content from MinIO if the file belongs to the authenticated user.",
     tags=["Files"]
@@ -222,7 +222,7 @@ class RenameFileResponse(BaseModel):
         from_attributes = True
 
 @router.post(
-    "/rename-file", 
+    "/myfiles/rename", 
     response_model=RenameFileResponse, 
     tags=["Files"],
     summary="Rename a file by ID",
