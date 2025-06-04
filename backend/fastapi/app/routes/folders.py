@@ -5,8 +5,7 @@ from app.db import models
 from app.db.database import get_db
 from app.auth.jwt import get_current_user_id
 from pydantic import BaseModel
-from app.routes.schema import FolderInfo
-from app.routes.schema import FolderDetails
+from app.schema.folders import FolderInfo, FolderDetails
 from pydantic import BaseModel, Field
 from app.utils.folders_utils import delete_folder_recursive
 from datetime import datetime
@@ -16,6 +15,14 @@ router = APIRouter()
 
 
 class FolderCreateRequest(BaseModel):
+    """
+    Request model for creating a new folder.
+
+    Attributes:
+        name (str): The name of the new folder.
+        parent_id (Optional[Union[int, str]]): Optional ID of the parent folder.
+            Can be int, str, or None. Defaults to None meaning root-level folder.
+    """
     name: str
     parent_id: Optional[Union[int, str]] = Field(default=None, description="Optional parent folder ID, defaults to None")
 
@@ -23,13 +30,29 @@ class FolderCreateRequest(BaseModel):
     "/folders", 
     response_model=FolderInfo, 
     tags=["Folders"],
-    summary="Create a new folder (optionally nested inside another folder)"
+    summary="Create a new folder (optionally nested inside another folder)",
+    description="Creates a folder owned by the authenticated user. "
+                "If `parent_id` is provided, verifies that the parent folder exists and belongs to the user."
 )
 def create_folder(
     folder_req: FolderCreateRequest,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ) -> FolderInfo:
+    """
+    Create a new folder for the authenticated user.
+
+    Args:
+        folder_req (FolderCreateRequest): Folder creation request payload.
+        db (Session): Database session injected by FastAPI.
+        user_id (int): Current authenticated user's ID.
+
+    Returns:
+        FolderInfo: Metadata of the newly created folder.
+
+    Raises:
+        HTTPException(400): For invalid `parent_id` or unauthorized parent folder.
+    """
     # Normalize parent_id to int or None
     parent_id = folder_req.parent_id
     if parent_id in (None, "", "null"):
@@ -40,7 +63,7 @@ def create_folder(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid parent_id")
 
-    # If parent_id is set, verify the folder exists and belongs to the user
+    # Verify parent folder ownership and existence if parent_id is provided
     parent_folder = None
     if parent_id:
         parent_folder = db.query(models.Folder).filter(
@@ -50,19 +73,21 @@ def create_folder(
         if not parent_folder:
             raise HTTPException(status_code=400, detail="Parent folder not found or access denied")
 
+    # Create new folder instance
     new_folder = models.Folder(
         name=folder_req.name,
         owner_id=user_id,
         parent_id=parent_id,
-        created_at=datetime.utcnow(),         
-        date_modified=None                     
+        created_at=datetime.utcnow(),
+        date_modified=None  # No modifications yet
     )
 
+    # Persist new folder
     db.add(new_folder)
     db.commit()
     db.refresh(new_folder)
 
-    #  Update parent's date_modified if parent exists
+    # Update parent folder modification date if applicable
     if parent_folder:
         parent_folder.date_modified = datetime.utcnow()
         db.commit()
@@ -71,33 +96,64 @@ def create_folder(
 
 
 
-@router.get("/folders", 
-            response_model=List[FolderInfo],
-            tags=["Folders"],
-            summary="Get top-level folders owned by the user"
+@router.get(
+    "/folders", 
+    response_model=List[FolderInfo],
+    tags=["Folders"],
+    summary="Get top-level folders owned by the user",
+    description="Retrieve a list of all folders owned by the authenticated user that do not have a parent folder (i.e., top-level folders)."
 )
 def get_my_folders(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ) -> List[FolderInfo]:
+    """
+    Fetch all top-level folders for the current authenticated user.
+
+    Args:
+        db (Session): Database session dependency.
+        user_id (int): Current user's ID obtained via authentication.
+
+    Returns:
+        List[FolderInfo]: List of metadata for the user's top-level folders.
+    """
     folders = db.query(models.Folder).filter(
         models.Folder.owner_id == user_id,
-        models.Folder.parent_id.is_(None)
+        models.Folder.parent_id.is_(None)  # Only root-level folders
     ).all()
+    
     return folders
 
 
 
 @router.get(
-    "/folders/{folder_id}/details", 
+    "/folders/{folder_id}/details",
     response_model=FolderDetails,
-    tags=["Folders"]
+    tags=["Folders"],
+    summary="Get detailed info for a folder, including files and subfolders",
+    description="Retrieve metadata of a folder by ID with all its files and immediate subfolders, accessible only to the folder owner."
 )
 def get_folder_details(
     folder_id: int,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ) -> FolderDetails:
+    """
+    Retrieve detailed information about a specific folder owned by the user,
+    including its metadata, the list of files it contains, and its direct subfolders.
+
+    Args:
+        folder_id (int): The ID of the folder to retrieve.
+        db (Session): Database session dependency.
+        user_id (int): ID of the current authenticated user.
+
+    Raises:
+        HTTPException 404: If folder does not exist or user does not own it.
+
+    Returns:
+        FolderDetails: Folder metadata along with lists of files and subfolders.
+    """
+    # Fetch the folder ensuring ownership
     folder = db.query(models.Folder).filter(
         models.Folder.id == folder_id,
         models.Folder.owner_id == user_id
@@ -106,16 +162,19 @@ def get_folder_details(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
+    # Fetch files inside this folder owned by user
     files = db.query(models.File).filter(
         models.File.folder_id == folder_id,
         models.File.owner_id == user_id
     ).all()
 
+    # Fetch immediate subfolders owned by user
     subfolders = db.query(models.Folder).filter(
         models.Folder.parent_id == folder_id,
         models.Folder.owner_id == user_id
     ).all()
 
+    # Return combined folder details
     return FolderDetails(
         id=folder.id,
         name=folder.name,
@@ -130,15 +189,32 @@ def get_folder_details(
 
 
 @router.delete(
-    "/folders/{folder_id}", 
+    "/folders/{folder_id}",
     tags=["Folders"],
-    summary="Recursively delete folder and its contents"
+    summary="Recursively delete folder and its contents",
+    description=(
+        "Deletes the specified folder and all its contents, including all nested subfolders "
+        "and files, if owned by the authenticated user. Also updates the parent's "
+        "date_modified timestamp if applicable."
+    )
 )
 def delete_folder(
-    folder_id: int, 
-    db: Session = Depends(get_db), 
+    folder_id: int,
+    db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ):
+    """
+    Recursively delete a folder along with all nested files and subfolders.
+
+    Args:
+        folder_id (int): ID of the folder to delete.
+        db (Session): Database session.
+        user_id (int): ID of the authenticated user.
+
+    Raises:
+        HTTPException 404: If the folder is not found or access is denied.
+    """
+    # Query folder by ID and ensure ownership
     folder = db.query(models.Folder).filter(
         models.Folder.id == folder_id,
         models.Folder.owner_id == user_id
@@ -147,14 +223,14 @@ def delete_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found or access denied")
 
-    #  Capture parent_id before deletion
+    # Capture parent folder ID and folder name for update and response
     parent_id = folder.parent_id
     folder_name = folder.name
 
-    # Perform recursive deletion
+    # Call recursive deletion helper function
     delete_folder_recursive(db, folder_id, user_id)
 
-    #  Update parent's date_modified if it exists
+    # Update parent's date_modified timestamp if parent exists
     if parent_id:
         parent_folder = db.query(models.Folder).filter(
             models.Folder.id == parent_id,
@@ -170,10 +246,25 @@ def delete_folder(
 
 
 class RenameFolderRequest(BaseModel):
+    """
+    Request schema for renaming a folder.
+
+    Attributes:
+        folder_id (int): ID of the folder to rename.
+        new_name (str): New name for the folder. Must be at least 1 character long.
+    """
     folder_id: int = Field(..., description="ID of the folder to rename")
     new_name: str = Field(..., description="New name for the folder", min_length=1)
     
 class RenameFolderResponse(BaseModel):
+    """
+    Response schema returned after successfully renaming a folder.
+
+    Attributes:
+        message (str): Confirmation message.
+        folder_id (int): ID of the renamed folder.
+        new_name (str): The new name of the folder.
+    """
     message: str = Field(..., example="Folder renamed successfully")
     folder_id: int
     new_name: str
@@ -188,6 +279,21 @@ def rename_folder(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ) -> RenameFolderResponse:
+    """
+    Rename a folder owned by the authenticated user.
+
+    Args:
+        payload (RenameFolderRequest): Request payload containing folder_id and new_name.
+        db (Session): Database session.
+        user_id (int): ID of the authenticated user.
+
+    Raises:
+        HTTPException 404: If the folder does not exist or is not owned by the user.
+
+    Returns:
+        RenameFolderResponse: Confirmation message and updated folder info.
+    """
+    # Query folder by ID and ensure ownership
     folder = db.query(models.Folder).filter(
         models.Folder.id == payload.folder_id,
         models.Folder.owner_id == user_id
@@ -196,11 +302,11 @@ def rename_folder(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    # Rename folder and update its date_modified
+    # Rename the folder and update date_modified timestamp
     folder.name = payload.new_name
     folder.date_modified = datetime.utcnow()
 
-    # Also update parent folder's date_modified if parent exists
+    # If folder has a parent, update parent's date_modified timestamp as well
     if folder.parent_id:
         parent_folder = db.query(models.Folder).filter(
             models.Folder.id == folder.parent_id,
@@ -208,7 +314,7 @@ def rename_folder(
         ).first()
         if parent_folder:
             parent_folder.date_modified = datetime.utcnow()
-            db.add(parent_folder)  # mark as dirty
+            db.add(parent_folder)  # Mark as dirty for update
 
     db.commit()
     db.refresh(folder)
