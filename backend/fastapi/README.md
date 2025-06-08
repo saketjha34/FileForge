@@ -41,4 +41,3 @@ Access the interactive API docs at:
 | List all relations (tables, views) | `\d`                |
 | Show all schemas                   | `\dn`               |
 | Show all users/roles               | `\du`               |
-| Quit `psql`                        | `\q`                |
