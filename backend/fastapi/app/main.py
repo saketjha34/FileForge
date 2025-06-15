@@ -1,24 +1,24 @@
 import io
 import uuid
-from fastapi import Form
-from fastapi import status
-from app.routes import files
-from app.auth import jwt, users
-from sqlalchemy.orm import Session
-from app.db.database import get_db
-from app.db import models, database
-from app.storage import minio_client
-from app.auth.jwt import get_current_user_id
+from datetime import datetime
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File , Query
-from app.routes import folders
-from datetime import datetime
+from sqlalchemy.orm import Session
+
+from app.db import models, database
+from app.db.database import get_db
+from app.auth import jwt, users
+from app.auth.jwt import get_current_user_id
+from app.routes import files, folders
+from app.storage import minio_client
 
 
-
-app = FastAPI()
-
+app = FastAPI(
+    title="FileForge - Distributed File Management API",
+    description="A FastAPI-based backend service for managing users, nested folders, and file uploads using MinIO for object storage.",
+    version="1.0.0"
+)
 
 
 # CORS configuration
@@ -31,11 +31,24 @@ app.add_middleware(
 )
 
 
-
+# Include routers
 app.include_router(files.router)
 app.include_router(folders.router)
+
+# Initialize database schema
 models.Base.metadata.create_all(bind=database.engine)
+
+# Create MinIO bucket
 minio_client.create_bucket()
+
+
+
+@app.get("/health", tags=["Health Check"])
+def health_check():
+    return {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
 
 
 
