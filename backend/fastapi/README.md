@@ -78,15 +78,11 @@ psql -U postgres -d fileforge_db
 
 The system is backed by a PostgreSQL database schema that models:
 
+![Database Schema](https://github.com/saketjha34/FileForge/blob/main/asset/images/database-schema.png)
+
 * **Users**: Registered individuals who can own files and folders.
 * **Folders**: Hierarchical containers that support nesting via parent-child relationships.
 * **Files**: Uploaded assets that are associated with specific folders and owners, storing metadata such as MIME type, size, and timestamps.
-
-The schema ensures:
-
-* Fine-grained ownership and access tracking.
-* Logical folder organization with support for nested structures.
-* Accurate file metadata storage to support indexing and querying.
 
 ### 🗄️ Object Storage – MinIO
 
@@ -100,7 +96,6 @@ All actual file contents are stored in **MinIO**, a high-performance, S3-compati
 
 The diagram illustrates the relational structure connecting users, folders, and files. It highlights key associations such as folder nesting (`parent_id`) and file-folder linkage (`folder_id`), forming the backbone of the file management system.
 
-![Database Schema](database-schema.png)
 
 
 ### 📜 Common PostgreSQL Commands (Inside Docker)
