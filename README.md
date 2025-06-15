@@ -27,6 +27,11 @@ All components are **fully containerized** with Docker for easy development and 
 
 ---
 
+### 🖼️ Schema Diagram
+
+The diagram illustrates the relational structure connecting users, folders, and files. It highlights key associations such as folder nesting (`parent_id`) and file-folder linkage (`folder_id`), forming the backbone of the file management system.
+![Database Schema](https://github.com/saketjha34/FileForge/blob/main/asset/images/database-schema.png)
+
 ## 📦 Features
 
 ### 🔐 Authentication
