@@ -1,53 +1,115 @@
-import React, { useState, useRef } from "react";
-import { Folder, MoreVertical } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Folder, MoreVertical, Check } from "lucide-react";
 import FolderMenu from "./FolderMenu";
 
-const FolderGridItem = ({ folder, navigateToFolder, deleteFolder }) => {
+const FolderGridItem = ({
+  folder,
+  navigateToFolder,
+  deleteFolder,
+  onSelect,
+  onRename,
+  isSelected,
+}) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef();
+  const [isHovered, setIsHovered] = useState(false);
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target) &&
+        !menuButtonRef.current?.contains(e.target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div
-      key={folder.id}
-      className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => navigateToFolder(folder.id)}
+      className={`relative bg-white rounded-xl border-2 ${
+        isSelected ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-100"
+      } overflow-visible shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group`}
+      onClick={() => navigateToFolder()}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="p-4 flex flex-col items-center">
-        <div className="w-16 h-16 flex items-center justify-center bg-blue-50 rounded-lg mb-3">
-          <Folder className="text-blue-600" size={32} />
+      {/* Selection checkbox */}
+      <div
+        className={`absolute top-3 left-3 w-5 h-5 rounded-md flex items-center justify-center transition-all ${
+          isSelected
+            ? "bg-blue-500 text-white opacity-100"
+            : isHovered
+            ? "bg-white border border-gray-300 opacity-100"
+            : "opacity-0"
+        } no-preview z-10`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(folder.id, "folder", !isSelected);
+        }}
+      >
+        {isSelected && <Check size={14} strokeWidth={3} />}
+      </div>
+
+      {/* Folder preview/content */}
+      <div className="p-5 flex flex-col items-center overflow-visible">
+        <div className="w-20 h-20 flex items-center justify-center bg-blue-50 rounded-xl mb-4 group-hover:bg-blue-100 transition-colors">
+          <Folder className="text-blue-500" size={36} strokeWidth={1.5} />
         </div>
-        <div className="text-center">
-          <p className="text-sm font-medium text-gray-900 truncate w-full px-2">
+        <div className="text-center w-full">
+          <p className="text-sm font-medium text-gray-800 truncate px-2">
             {folder.name}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {folder.item_count} items
+            {folder.items_count || 0} items
           </p>
         </div>
       </div>
-      <div className="border-t border-gray-200 px-4 py-2 flex justify-between items-center bg-gray-50">
+
+      {/* Footer with actions */}
+      <div className="border-t border-gray-100 px-4 py-3 flex justify-between items-center bg-gray-50/50 group-hover:bg-gray-100/50 transition-colors overflow-visible">
         <span className="text-xs text-gray-500">
-          {new Date(folder.created_at).toLocaleDateString()}
+          {new Date(folder.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
         </span>
-        <div className="flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }}
-            className="text-gray-500 hover:text-gray-700 p-1 relative"
-            title="More options"
-          >
-            <MoreVertical size={16} />
+        <div className="flex gap-2 relative overflow-visible">
+          <div className="relative no-preview overflow-visible">
+            <button
+              ref={menuButtonRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+              className="text-gray-500 hover:text-gray-700 p-1 transition-colors"
+              title="More options"
+              aria-label="Folder options"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical size={16} strokeWidth={2} />
+            </button>
+
             {menuOpen && (
-              <FolderMenu
+              <div
                 ref={menuRef}
-                folder={folder}
-                onClose={() => setMenuOpen(false)}
-                onDelete={() => deleteFolder(folder.id)}
-              />
+                className="absolute right-0 bottom-full mb-2 z-[9999]"
+              >
+                <FolderMenu
+                  folder={folder}
+                  onClose={() => setMenuOpen(false)}
+                  onDelete={() => deleteFolder(folder.id)}
+                  onRename={() => onRename(folder)}
+                />
+              </div>
             )}
-          </button>
+          </div>
         </div>
       </div>
     </div>

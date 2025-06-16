@@ -10,10 +10,13 @@ import {
   ChevronRight,
   Printer,
   Fullscreen,
+  Loader2,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import worker from "pdfjs-dist/build/pdf.worker.min?url";
 import toast from "react-hot-toast";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
@@ -27,7 +30,9 @@ const FilePreview = () => {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
-  const [visiblePages, setVisiblePages] = useState([1]); // Track which pages are visible
+  const [visiblePages, setVisiblePages] = useState([1]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(true);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -36,7 +41,12 @@ const FilePreview = () => {
       return;
     }
     fetchFile();
-  }, [id, token, navigate]);
+    return () => {
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
+    };
+  }, [id, token]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,9 +58,8 @@ const FilePreview = () => {
       // Load next page when scrolled near the bottom (80% threshold)
       if (scrollPosition >= scrollHeight * 0.8) {
         const nextPage = Math.min(Math.max(...visiblePages) + 1, numPages);
-
         if (!visiblePages.includes(nextPage)) {
-          setVisiblePages([...visiblePages, nextPage]);
+          setVisiblePages((prev) => [...prev, nextPage]);
         }
       }
     };
@@ -62,32 +71,51 @@ const FilePreview = () => {
     }
   }, [visiblePages, numPages]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   const fetchFile = async () => {
     try {
-      // Fetch file metadata
+      setLoading(true);
+      // First fetch file metadata
       const res = await fetch(`http://localhost:8000/myfiles/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to fetch file details");
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch file details");
+      }
+
       const fileData = await res.json();
       setFile(fileData);
 
-      // Fetch file content for preview
+      // Then fetch the actual file content
       const fileRes = await fetch(
-        `http://localhost:8000/download/${id}?preview=true`,
+        `http://localhost:8000/myfiles/download/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      if (!fileRes.ok) throw new Error("Failed to fetch file for preview");
+
+      if (!fileRes.ok) {
+        throw new Error("Failed to fetch file content");
+      }
 
       const blob = await fileRes.blob();
-      const previewUrl = window.URL.createObjectURL(blob);
+      const previewUrl = URL.createObjectURL(blob);
       setFileUrl(previewUrl);
     } catch (error) {
       console.error("Error fetching file:", error);
       toast.error("Error loading file preview");
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } finally {
       setLoading(false);
     }
@@ -95,16 +123,17 @@ const FilePreview = () => {
 
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
+    setPdfLoading(false);
     // Initially load first 2 pages for better user experience
     setVisiblePages([1, Math.min(2, numPages)]);
   };
 
   const zoomIn = () => {
-    setScale((prevScale) => Math.min(prevScale + 0.25, 3.0));
+    setScale((prev) => Math.min(prev + 0.25, 3.0));
   };
 
   const zoomOut = () => {
-    setScale((prevScale) => Math.max(prevScale - 0.25, 0.5));
+    setScale((prev) => Math.max(prev - 0.25, 0.5));
   };
 
   const goToPrevPage = () => {
@@ -113,7 +142,12 @@ const FilePreview = () => {
 
     // Add previous page to visible pages if not already there
     if (!visiblePages.includes(newPage)) {
-      setVisiblePages([newPage, ...visiblePages]);
+      setVisiblePages((prev) => [newPage, ...prev]);
+    }
+
+    // Scroll to top of container
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -123,64 +157,102 @@ const FilePreview = () => {
 
     // Add next page to visible pages if not already there
     if (!visiblePages.includes(newPage)) {
-      setVisiblePages([...visiblePages, newPage]);
+      setVisiblePages((prev) => [...prev, newPage]);
+    }
+
+    // Scroll to top of container
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        toast.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
     }
   };
 
   const printDocument = () => {
-    window.print();
+    if (isPdf) {
+      const printWindow = window.open(fileUrl, "_blank");
+      printWindow?.addEventListener("load", () => {
+        printWindow.print();
+      });
+    } else {
+      window.print();
+    }
   };
 
   const downloadFile = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/download/${id}`, {
+      toast.loading("Preparing download...", { id: "download" });
+      const res = await fetch(`http://localhost:8000/myfiles/download/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to download file");
+
+      if (!res.ok) {
+        throw new Error("Failed to download file");
+      }
 
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = file.filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
 
-      toast.success("Download started!");
+      toast.success("Download started!", { id: "download" });
     } catch (error) {
       console.error("Download error:", error);
-      toast.error("Error downloading file");
+      toast.error("Error downloading file", { id: "download" });
     }
   };
 
   const handleClose = () => {
-    // Revoke the object URL to prevent memory leaks
     if (fileUrl) {
-      window.URL.revokeObjectURL(fileUrl);
+      URL.revokeObjectURL(fileUrl);
     }
     navigate("/dashboard");
   };
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+          <p className="text-gray-700">Loading file preview...</p>
+        </div>
       </div>
     );
   }
 
   if (!file || !fileUrl) {
     return (
-      <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
-        <div className="text-red-600 font-medium">File not found</div>
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="ml-4 text-blue-600 hover:underline"
-        >
-          Go back to Dashboard
-        </button>
+      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 gap-4 p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
+          <h3 className="text-lg font-medium text-red-800 mb-2">
+            File not found
+          </h3>
+          <p className="text-red-600 mb-4">
+            The file you're trying to access doesn't exist or you don't have
+            permission to view it.
+          </p>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Go back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
@@ -188,38 +260,45 @@ const FilePreview = () => {
   const isPdf = file.filename.toLowerCase().endsWith(".pdf");
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+    <div
+      className={`fixed inset-0 bg-white z-50 flex flex-col ${
+        isFullscreen ? "fullscreen-mode" : ""
+      }`}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between bg-white border-b border-gray-200 p-4">
-        <h2 className="text-lg font-medium text-gray-900 truncate max-w-md">
-          {file.filename}
-        </h2>
+      <div className="flex items-center justify-between bg-white border-b border-gray-200 p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleClose}
+            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+            title="Close"
+          >
+            <X size={20} className="text-gray-600" />
+          </button>
+          <h2 className="text-lg font-medium text-gray-900 truncate max-w-xs md:max-w-md">
+            {file.filename}
+          </h2>
+        </div>
         <div className="flex items-center gap-4">
           <button
             onClick={downloadFile}
-            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors px-3 py-1.5 rounded-md hover:bg-blue-50"
+            title="Download"
           >
-            <Download size={16} />
-            <span>Download</span>
-          </button>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-full hover:bg-gray-100"
-            title="Close"
-          >
-            <X size={20} />
+            <Download size={18} />
+            <span className="hidden sm:inline">Download</span>
           </button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden bg-gray-50">
+      <div className="flex-1 overflow-hidden bg-gray-50 relative">
         {isPdf ? (
           <div className="flex flex-col h-full">
             {/* PDF Toolbar */}
-            <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200 p-3">
+            <div className="flex items-center justify-between bg-white border-b border-gray-200 p-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700 truncate max-w-xs">
+                <span className="text-sm font-medium text-gray-700 truncate max-w-xs hidden md:inline">
                   {file.filename}
                 </span>
               </div>
@@ -228,18 +307,18 @@ const FilePreview = () => {
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <button
                     onClick={zoomOut}
-                    className="p-1 rounded hover:bg-gray-200"
+                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={scale <= 0.5}
                     title="Zoom Out"
                   >
                     <ZoomOut size={18} />
                   </button>
-                  <span className="w-12 text-center">
+                  <span className="w-12 text-center font-medium">
                     {Math.round(scale * 100)}%
                   </span>
                   <button
                     onClick={zoomIn}
-                    className="p-1 rounded hover:bg-gray-200"
+                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={scale >= 3.0}
                     title="Zoom In"
                   >
@@ -251,18 +330,18 @@ const FilePreview = () => {
                   <button
                     onClick={goToPrevPage}
                     disabled={pageNumber <= 1}
-                    className="p-1 rounded hover:bg-gray-200"
+                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Previous Page"
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <span>
+                  <span className="font-medium">
                     Page {pageNumber} of {numPages}
                   </span>
                   <button
                     onClick={goToNextPage}
                     disabled={pageNumber >= numPages}
-                    className="p-1 rounded hover:bg-gray-200"
+                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Next Page"
                   >
                     <ChevronRight size={18} />
@@ -272,15 +351,15 @@ const FilePreview = () => {
                 <div className="flex items-center gap-2 border-l border-gray-300 pl-4">
                   <button
                     onClick={printDocument}
-                    className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-800"
+                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-800"
                     title="Print"
                   >
                     <Printer size={18} />
                   </button>
                   <button
-                    onClick={() => toast("Fullscreen feature coming soon!")}
-                    className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-800"
-                    title="Fullscreen"
+                    onClick={toggleFullscreen}
+                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-800"
+                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                   >
                     <Fullscreen size={18} />
                   </button>
@@ -291,16 +370,29 @@ const FilePreview = () => {
             {/* PDF Content with scrollable container */}
             <div
               ref={containerRef}
-              className="flex-1 overflow-auto bg-gray-100 p-4"
+              className="flex-1 overflow-auto bg-gray-100 p-4 scroll-smooth"
             >
+              {pdfLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                    <p className="text-gray-700">Loading PDF pages...</p>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col items-center">
                 <Document
                   file={fileUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
+                  onLoadError={(error) => {
+                    console.error("PDF load error:", error);
+                    toast.error("Failed to load PDF document");
+                    setPdfLoading(false);
+                  }}
                   loading={
                     <div className="flex items-center justify-center h-full">
                       <p className="text-blue-600 font-medium">
-                        Loading PDF preview...
+                        Loading PDF document...
                       </p>
                     </div>
                   }
@@ -314,7 +406,7 @@ const FilePreview = () => {
                   error={
                     <div className="flex items-center justify-center h-full">
                       <p className="text-red-700 font-semibold">
-                        Failed to load PDF
+                        Failed to load PDF document
                       </p>
                     </div>
                   }
@@ -322,20 +414,26 @@ const FilePreview = () => {
                   {visiblePages.map((page) => (
                     <div
                       key={`page-${page}`}
-                      className="shadow-lg mb-4 last:mb-0"
+                      className="shadow-md mb-6 last:mb-0 bg-white rounded-md overflow-hidden"
                     >
                       <Page
                         pageNumber={page}
                         scale={scale}
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                        className="border border-gray-200 bg-white"
+                        renderTextLayer={true}
+                        renderAnnotationLayer={true}
+                        loading={
+                          <div className="h-[1200px] w-full flex items-center justify-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                          </div>
+                        }
+                        className="border border-gray-200"
                       />
-                      {page < numPages && (
-                        <div className="text-center text-gray-500 text-sm py-2">
-                          Continue scrolling to load more pages...
-                        </div>
-                      )}
+                      {page < numPages &&
+                        page === visiblePages[visiblePages.length - 1] && (
+                          <div className="text-center text-gray-500 text-sm py-3 bg-gray-50">
+                            Continue scrolling to load more pages...
+                          </div>
+                        )}
                     </div>
                   ))}
                 </Document>
@@ -343,14 +441,32 @@ const FilePreview = () => {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full p-4">
-            <embed
-              src={fileUrl}
-              type={file.mime_type || "application/octet-stream"}
-              width="100%"
-              height="100%"
-              className="max-w-full max-h-full border border-gray-200 shadow-sm"
-            />
+          <div className="flex items-center justify-center h-full p-4 bg-gray-100">
+            <div className="relative w-full h-full max-w-6xl max-h-[calc(100vh-120px)] bg-white shadow-md rounded-md overflow-hidden">
+              <embed
+                src={fileUrl}
+                type={file.mime_type || "application/octet-stream"}
+                width="100%"
+                height="100%"
+                className="block w-full h-full"
+              />
+              <div className="absolute bottom-4 right-4 flex gap-2">
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-gray-100 transition-colors"
+                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                >
+                  <Fullscreen size={18} />
+                </button>
+                <button
+                  onClick={printDocument}
+                  className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-gray-100 transition-colors"
+                  title="Print"
+                >
+                  <Printer size={18} />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

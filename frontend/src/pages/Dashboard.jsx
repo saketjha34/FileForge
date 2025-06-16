@@ -1,9 +1,27 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useViewMode } from "../contexts/ViewModeContext";
 import toast from "react-hot-toast";
-import Sidebar from "../components/Sidebar";
-import TopBar from "./TopBar";
+import {
+  Grid,
+  List,
+  Upload,
+  FolderPlus,
+  Trash2,
+  Share2,
+  Download,
+  MoreVertical,
+  ChevronRight,
+  Star,
+  HardDrive,
+  RefreshCw,
+  Search,
+  X,
+  ChevronDown,
+  ChevronLeft,
+} from "lucide-react";
+
 import Breadcrumbs from "../components/BreadCrumbs";
 import EmptyState from "../components/EmptyState";
 import FileGridItem from "../components/FileGridItem";
@@ -11,77 +29,89 @@ import FolderGridItem from "../components/FolderGridItem";
 import FileListItem from "../components/FileListItem";
 import FolderListItem from "../components/FolderListItem";
 import CreateFolderModal from "../components/CreateFolderModal";
+import RenameModal from "../components/RenameModal";
+import ShareModal from "../components/ShareModal";
 
 const API_BASE = "http://localhost:8000";
 
 const Dashboard = () => {
   const { token, user } = useAuth();
+  const { viewMode, updateViewMode } = useViewMode();
   const navigate = useNavigate();
 
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFolder, setCurrentFolder] = useState(null);
+  const [folderPath, setFolderPath] = useState([]);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [renameData, setRenameData] = useState({
+    id: null,
+    name: "",
+    type: "",
+  });
+  const [shareData, setShareData] = useState({
+    id: null,
+    type: "",
+  });
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => {
     if (!token) {
       navigate("/login");
       return;
     }
-    fetchFiles();
-    fetchFolders();
+    fetchFolderContents();
   }, [token, navigate, currentFolder]);
 
-  const fetchFiles = async () => {
+  const fetchFolderContents = async () => {
     setLoading(true);
     try {
-      const url = currentFolder
-        ? `${API_BASE}/folders/${currentFolder}/files`
-        : `${API_BASE}/myfiles`;
+      if (currentFolder) {
+        const res = await fetch(
+          `${API_BASE}/folders/${currentFolder}/details`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!res.ok) throw new Error("Failed to fetch folder details");
 
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch files");
-      const data = await res.json();
-      setFiles(data);
+        const data = await res.json();
+        setFolders(data.subfolders || []);
+        setFiles(data.files || []);
+      } else {
+        const [foldersRes, filesRes] = await Promise.all([
+          fetch(`${API_BASE}/folders`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE}/myfiles`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        if (!foldersRes.ok || !filesRes.ok)
+          throw new Error("Failed to fetch root contents");
+
+        setFolders(await foldersRes.json());
+        setFiles(await filesRes.json());
+      }
     } catch (error) {
-      console.error("fetchFiles error:", error);
-      toast.error("Error fetching files");
+      console.error("Error:", error);
+      toast.error("Failed to load contents");
     } finally {
       setLoading(false);
     }
   };
-
-  const fetchFolders = async () => {
-    try {
-      const url = currentFolder
-        ? `${API_BASE}/folders/${currentFolder}/subfolders`
-        : `${API_BASE}/folders`;
-
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch folders");
-      const data = await res.json();
-      setFolders(data);
-    } catch (error) {
-      console.error("fetchFolders error:", error);
-      toast.error("Error fetching folders");
-    }
-  };
-
   const createFolder = async () => {
     if (!newFolderName.trim()) {
       toast.error("Folder name cannot be empty");
       return;
     }
-
     try {
       const res = await fetch(`${API_BASE}/folders`, {
         method: "POST",
@@ -91,87 +121,67 @@ const Dashboard = () => {
         },
         body: JSON.stringify({
           name: newFolderName,
-          parent_id: currentFolder,
+          parent_id: currentFolder || null,
         }),
       });
       if (!res.ok) throw new Error("Failed to create folder");
       toast.success("Folder created successfully");
       setShowCreateFolderModal(false);
       setNewFolderName("");
-      fetchFolders();
-    } catch (error) {
-      console.error("createFolder error:", error);
-      toast.error("Error creating folder");
+      fetchFolderContents();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create folder");
     }
   };
 
   const deleteFile = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this file?")) return;
+    if (!window.confirm("Delete this file?")) return;
     try {
-      const res = await fetch(`${API_BASE}/delete/${id}`, {
+      const res = await fetch(`${API_BASE}/myfiles/delete/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to delete file");
-      toast.success("File moved to trash");
-      fetchFiles();
-    } catch (error) {
-      console.error("deleteFile error:", error);
+      if (!res.ok) throw new Error();
+      toast.success("File deleted");
+      fetchFolderContents();
+    } catch {
       toast.error("Error deleting file");
     }
   };
 
   const deleteFolder = async (id) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this folder and its contents?"
-      )
-    )
-      return;
+    if (!window.confirm("Delete this folder and its contents?")) return;
     try {
       const res = await fetch(`${API_BASE}/folders/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to delete folder");
-      toast.success("Folder moved to trash");
-      fetchFolders();
-    } catch (error) {
-      console.error("deleteFolder error:", error);
+      if (!res.ok) throw new Error();
+      toast.success("Folder deleted");
+      fetchFolderContents();
+    } catch {
       toast.error("Error deleting folder");
     }
   };
 
   const downloadFile = async (file) => {
     try {
-      const res = await fetch(`${API_BASE}/download/${file.id}`, {
+      const res = await fetch(`${API_BASE}/myfiles/download/${file.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Network response was not ok");
-
+      if (!res.ok) throw new Error();
       const blob = await res.blob();
-      const contentDisposition = res.headers.get("content-disposition");
-      let filename = file.filename || "downloaded_file";
-      if (contentDisposition && contentDisposition.includes("filename=")) {
-        filename = contentDisposition
-          .split("filename=")[1]
-          .replace(/"/g, "")
-          .trim();
-      }
-
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
+      a.download = file.filename;
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success("Download started!");
-    } catch (error) {
-      console.error("downloadFile error:", error);
-      toast.error("Error downloading file");
+      URL.revokeObjectURL(url);
+      toast.success("Download started");
+    } catch {
+      toast.error("Download failed");
     }
   };
 
@@ -182,154 +192,460 @@ const Dashboard = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      if (currentFolder) {
-        formData.append("folder_id", currentFolder);
-      }
 
-      const res = await fetch(`${API_BASE}/upload`, {
+      const uploadUrl = currentFolder
+        ? `${API_BASE}/upload_files?folder_id=${currentFolder}`
+        : `${API_BASE}/upload_files`;
+
+      const res = await fetch(uploadUrl, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
-      await res.json();
-      toast.success("File uploaded successfully");
-      fetchFiles();
-    } catch (error) {
-      console.error("uploadFile error:", error);
-      toast.error("Error uploading file");
+
+      if (!res.ok) throw new Error();
+      toast.success("Uploaded");
+      fetchFolderContents();
+    } catch {
+      toast.error("Upload failed");
     } finally {
       setUploading(false);
       e.target.value = null;
     }
   };
 
-  const navigateToFolder = (folderId) => {
+  const renameItem = async () => {
+    if (!renameData.name.trim()) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+
+    try {
+      const endpoint =
+        renameData.type === "folder"
+          ? `${API_BASE}/folders/rename`
+          : `${API_BASE}/myfiles/rename`;
+
+      // Prepare the request body based on type
+      const requestBody =
+        renameData.type === "folder"
+          ? {
+              folder_id: renameData.id, // Note: Your API expects number for folder_id
+              new_name: renameData.name,
+            }
+          : {
+              file_id: renameData.id, // Note: Your API expects string for file_id
+              new_name: renameData.name,
+            };
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        // Get the error message from response if available
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Rename failed");
+      }
+
+      toast.success("Renamed successfully");
+      setShowRenameModal(false);
+      fetchFolderContents();
+    } catch (error) {
+      toast.error(error.message || "Rename failed");
+      console.error("Rename error:", error);
+    }
+  };
+
+  const handleRenameClick = (item, type) => {
+    setRenameData({
+      id: item.id,
+      name: type === "folder" ? item.name : item.filename,
+      type,
+    });
+    setShowRenameModal(true);
+  };
+
+  const handleShareClick = (item, type) => {
+    setShareData({
+      id: item.id,
+      type,
+    });
+    setShowShareModal(true);
+  };
+
+  const handleSelectItem = (id, type, isSelected) => {
+    if (isSelected) {
+      setSelectedItems([...selectedItems, { id, type }]);
+    } else {
+      setSelectedItems(
+        selectedItems.filter((item) => !(item.id === id && item.type === type))
+      );
+    }
+  };
+
+  const navigateToFolder = (folderId, folderName) => {
     setCurrentFolder(folderId);
+    setFolderPath((prev) => [...prev, { id: folderId, name: folderName }]);
+    setSelectedItems([]);
   };
 
   const navigateUp = () => {
-    setCurrentFolder(null);
+    const newPath = [...folderPath];
+    newPath.pop();
+    setFolderPath(newPath);
+    setCurrentFolder(newPath.length ? newPath[newPath.length - 1].id : null);
+    setSelectedItems([]);
   };
 
   const filteredFiles = files.filter((file) =>
     file.filename.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
   const filteredFolders = folders.filter((folder) =>
     folder.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (!token) return null;
+  const viewModeToggleButtons = (
+    <div className="flex items-center space-x-0.5 bg-gray-100 rounded-md p-0.5">
+      <button
+        onClick={() => updateViewMode("grid")}
+        className={`p-2 rounded ${
+          viewMode === "grid"
+            ? "bg-white shadow-sm text-blue-600"
+            : "text-gray-600 hover:bg-gray-200"
+        } transition-colors duration-150`}
+        title="Grid view"
+      >
+        <Grid className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => updateViewMode("list")}
+        className={`p-2 rounded ${
+          viewMode === "list"
+            ? "bg-white shadow-sm text-blue-600"
+            : "text-gray-600 hover:bg-gray-200"
+        } transition-colors duration-150`}
+        title="List view"
+      >
+        <List className="h-4 w-4" />
+      </button>
+    </div>
+  );
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        currentFolder={currentFolder}
-        navigateUp={navigateUp}
-        user={user}
-      />
+     <div className="flex h-screen bg-gray-50 text-gray-800">
+      {/* Sidebar */}
+      <div className="hidden md:flex md:flex-shrink-0">
+        <div className="flex flex-col w-64 border-r border-gray-200 bg-white">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h1 className="text-xl font-bold text-blue-600">FileForge</h1>
+          </div>
+          <nav className="flex-1 p-4 space-y-2">
+            <button className="flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-md bg-blue-50 text-blue-700 transition-colors duration-150">
+              <HardDrive className="mr-3 h-5 w-5 text-blue-600" />
+              My Files
+            </button>
+            <button className="flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-150">
+              <Star className="mr-3 h-5 w-5 text-gray-500" />
+              Starred
+            </button>
+            <button className="flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 transition-colors duration-150">
+              <Share2 className="mr-3 h-5 w-5 text-gray-500" />
+              Shared
+            </button>
+          </nav>
+          <div className="p-4 border-t border-gray-200">
+            <div className="flex items-center">
+              <ChevronDown className="ml-auto h-4 w-4 text-gray-500" />
+            </div>
+          </div>
+        </div>
+      </div>
 
+      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar
-          currentFolder={currentFolder}
-          navigateUp={navigateUp}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          setShowCreateFolderModal={setShowCreateFolderModal}
-          uploadFile={uploadFile}
-          uploading={uploading}
-        />
+        {/* Top Bar */}
+        <div className="border-b border-gray-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => navigateUp()}
+                disabled={!currentFolder}
+                className={`p-1.5 rounded-full ${
+                  currentFolder
+                    ? "hover:bg-gray-100 text-gray-700"
+                    : "text-gray-400"
+                } transition-colors duration-150`}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <Breadcrumbs
+                currentFolder={currentFolder}
+                setCurrentFolder={setCurrentFolder}
+                folderPath={folderPath}
+                setFolderPath={setFolderPath}
+              />
+            </div>
+            <div className="flex items-center space-x-3">
+              <div
+                className={`relative flex items-center px-3 py-2 rounded-md transition-all duration-150 ${
+                  isSearchFocused
+                    ? "bg-white ring-2 ring-blue-500 shadow-sm"
+                    : "bg-gray-100 hover:bg-gray-200"
+                }`}
+              >
+                <Search
+                  className={`h-4 w-4 ${
+                    isSearchFocused ? "text-blue-500" : "text-gray-500"
+                  }`}
+                />
+                <input
+                  type="text"
+                  placeholder="Search files and folders"
+                  className="ml-2 bg-transparent outline-none text-sm w-64 placeholder-gray-500"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="ml-2 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {viewModeToggleButtons}
+            </div>
+          </div>
+          <div className="px-6 pb-4 flex items-center justify-between border-t border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {currentFolder
+                ? folderPath[folderPath.length - 1]?.name
+                : "All Files"}
+            </h2>
+            <div className="flex items-center space-x-3">
+              <label
+                htmlFor="file-upload"
+                className={`flex items-center px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors duration-150 ${
+                  uploading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload
+                {uploading && (
+                  <RefreshCw className="ml-2 h-3 w-3 animate-spin" />
+                )}
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                onChange={uploadFile}
+                disabled={uploading}
+              />
+              <button
+                onClick={() => setShowCreateFolderModal(true)}
+                className="flex items-center px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 transition-colors duration-150"
+              >
+                <FolderPlus className="h-4 w-4 mr-2" />
+                New Folder
+              </button>
+              {selectedItems.length > 0 && (
+                <div className="flex items-center space-x-2 ml-2">
+                  <button
+                    onClick={() => {
+                      selectedItems.forEach((item) => {
+                        if (item.type === "file") {
+                          deleteFile(item.id);
+                        } else {
+                          deleteFolder(item.id);
+                        }
+                      });
+                      setSelectedItems([]);
+                    }}
+                    className="flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-red-600 transition-colors duration-150"
+                    title="Delete selected"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (selectedItems.length === 1) {
+                        const item = selectedItems[0];
+                        handleShareClick({ id: item.id }, item.type);
+                      }
+                    }}
+                    className={`flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md ${
+                      selectedItems.length === 1
+                        ? "hover:bg-gray-50 text-gray-700"
+                        : "text-gray-400 cursor-not-allowed"
+                    } transition-colors duration-150`}
+                    title={
+                      selectedItems.length === 1
+                        ? "Share selected"
+                        : "Select one item to share"
+                    }
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={fetchFolderContents}
+                className={`p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition-colors duration-150 ${
+                  loading ? "animate-spin" : ""
+                }`}
+                title="Refresh"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
 
-        <Breadcrumbs
-          currentFolder={currentFolder}
-          setCurrentFolder={setCurrentFolder}
-        />
-
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        {/* File/Folder Content - Enhanced */}
+        <div className="flex-1 overflow-y-auto bg-gray-50">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              <RefreshCw className="animate-spin h-8 w-8 text-blue-500" />
             </div>
-          ) : filteredFiles.length === 0 && filteredFolders.length === 0 ? (
-            <EmptyState
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              setShowCreateFolderModal={setShowCreateFolderModal}
-            />
+          ) : filteredFolders.length === 0 && filteredFiles.length === 0 ? (
+            <EmptyState setShowCreateFolderModal={setShowCreateFolderModal} />
           ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {filteredFolders.map((folder) => (
                 <FolderGridItem
                   key={folder.id}
                   folder={folder}
-                  navigateToFolder={navigateToFolder}
-                  deleteFolder={deleteFolder}
+                  navigateToFolder={() =>
+                    navigateToFolder(folder.id, folder.name)
+                  }
+                  onDelete={() => deleteFolder(folder.id)}
+                  onRename={() => handleRenameClick(folder, "folder")}
+                  onShare={() => handleShareClick(folder, "folder")}
+                  isSelected={selectedItems.some(
+                    (item) => item.id === folder.id && item.type === "folder"
+                  )}
+                  onSelect={handleSelectItem}
                 />
               ))}
               {filteredFiles.map((file) => (
                 <FileGridItem
                   key={file.id}
                   file={file}
-                  downloadFile={downloadFile}
-                  deleteFile={deleteFile}
+                  onDownload={() => downloadFile(file)}
+                  onDelete={() => deleteFile(file.id)}
+                  onRename={() => handleRenameClick(file, "file")}
+                  onShare={() => handleShareClick(file, "file")}
+                  onClick={() => navigate(`/preview/${file.id}`)}
+                  isSelected={selectedItems.some(
+                    (item) => item.id === file.id && item.type === "file"
+                  )}
+                  onSelect={handleSelectItem}
                 />
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                      Modified
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
-                      Size
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredFolders.map((folder) => (
-                    <FolderListItem
-                      key={`folder-${folder.id}`}
-                      folder={folder}
-                      navigateToFolder={navigateToFolder}
-                      deleteFolder={deleteFolder}
-                    />
-                  ))}
-                  {filteredFiles.map((file) => (
-                    <FileListItem
-                      key={`file-${file.id}`}
-                      file={file}
-                      downloadFile={downloadFile}
-                      deleteFile={deleteFile}
-                    />
-                  ))}
-                </tbody>
-              </table>
+            <div className="p-4">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Name
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell"
+                      >
+                        Modified
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell"
+                      >
+                        Size
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredFolders.map((folder) => (
+                      <FolderListItem
+                        key={folder.id}
+                        folder={folder}
+                        navigateToFolder={() =>
+                          navigateToFolder(folder.id, folder.name)
+                        }
+                        onDelete={() => deleteFolder(folder.id)}
+                        onRename={() => handleRenameClick(folder, "folder")}
+                        onShare={() => handleShareClick(folder, "folder")}
+                      />
+                    ))}
+                    {filteredFiles.map((file) => (
+                      <FileListItem
+                        key={file.id}
+                        file={file}
+                        onDownload={() => downloadFile(file)}
+                        onDelete={() => deleteFile(file.id)}
+                        onRename={() => handleRenameClick(file, "file")}
+                        onShare={() => handleShareClick(file, "file")}
+                        onClick={() => navigate(`/preview/${file.id}`)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
       </div>
 
+      {/* Modals */}
       <CreateFolderModal
         show={showCreateFolderModal}
-        onClose={() => {
-          setShowCreateFolderModal(false);
-          setNewFolderName("");
-        }}
+        onClose={() => setShowCreateFolderModal(false)}
         newFolderName={newFolderName}
         setNewFolderName={setNewFolderName}
         createFolder={createFolder}
+      />
+
+      <RenameModal
+        show={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+        name={renameData.name}
+        setName={(name) => setRenameData({ ...renameData, name })}
+        onRename={renameItem}
+        type={renameData.type}
+      />
+
+      <ShareModal
+        show={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        itemId={shareData.id}
+        itemType={shareData.type}
+        token={token}
       />
     </div>
   );

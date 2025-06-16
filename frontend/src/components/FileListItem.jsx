@@ -1,17 +1,47 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+// src/components/FileListItem.js
+import React, { useState, useRef, useEffect } from "react";
 import { FileText, Download, MoreVertical } from "lucide-react";
 import FileMenu from "./FileMenu";
 
-const FileListItem = ({ file, downloadFile, deleteFile }) => {
-  const navigate = useNavigate();
+const FileListItem = ({
+  file,
+  onDownload,
+  onDelete,
+  onRename,
+  onShare,
+  onClick,
+  isSelected,
+}) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef();
+  const menuButtonRef = useRef();
+
+  const handleRowClick = (e) => {
+    if (!e.target.closest("button") && !e.target.closest(".no-preview")) {
+      onClick?.();
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target) &&
+        !menuButtonRef.current?.contains(e.target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <tr
-      className="hover:bg-gray-50 cursor-pointer"
-      onClick={() => navigate(`/preview/${file.id}`)}
+      className={`hover:bg-gray-50 cursor-pointer ${
+        isSelected ? "bg-blue-50" : ""
+      }`}
+      onClick={handleRowClick}
     >
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
@@ -30,7 +60,11 @@ const FileListItem = ({ file, downloadFile, deleteFile }) => {
       </td>
       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
         <div className="text-sm text-gray-500">
-          {new Date(file.upload_time).toLocaleDateString()}
+          {new Date(file.upload_time).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
@@ -39,36 +73,42 @@ const FileListItem = ({ file, downloadFile, deleteFile }) => {
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <div className="flex justify-end items-center gap-2">
+        <div className="flex justify-end items-center gap-2 no-preview">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              downloadFile(file);
+              onDownload(file);
             }}
-            className="text-gray-400 hover:text-blue-600 p-1"
+            className="text-gray-400 hover:text-blue-600 p-1 transition-colors"
             title="Download"
           >
             <Download size={16} />
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }}
-            className="text-gray-400 hover:text-gray-600 p-1 relative"
-            title="More options"
-          >
-            <MoreVertical size={16} />
+          <div className="relative">
+            <button
+              ref={menuButtonRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+              className="text-gray-400 hover:text-gray-600 p-1 transition-colors"
+              title="More options"
+            >
+              <MoreVertical size={16} />
+            </button>
             {menuOpen && (
-              <FileMenu
-                ref={menuRef}
-                file={file}
-                onClose={() => setMenuOpen(false)}
-                onDownload={() => downloadFile(file)}
-                onDelete={() => deleteFile(file.id)}
-              />
+              <div ref={menuRef} className="absolute right-0 top-6 z-[9999]">
+                <FileMenu
+                  onClose={() => setMenuOpen(false)}
+                  onDownload={() => onDownload(file)}
+                  onDelete={() => onDelete(file.id)}
+                  onRename={() => onRename(file)}
+                  onShare={() => onShare(file)}
+                  file={file}
+                />
+              </div>
             )}
-          </button>
+          </div>
         </div>
       </td>
     </tr>
