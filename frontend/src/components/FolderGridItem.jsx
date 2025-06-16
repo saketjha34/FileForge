@@ -5,7 +5,7 @@ import FolderMenu from "./FolderMenu";
 const FolderGridItem = ({
   folder,
   navigateToFolder,
-  deleteFolder,
+  onDelete,
   onSelect,
   onRename,
   isSelected,
@@ -28,6 +28,20 @@ const FolderGridItem = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleDelete = (e) => {
+    e?.stopPropagation();
+    onDelete(folder.id);
+    setMenuOpen(false);
+  };
+
+  const handleRename = (e) => {
+    e?.stopPropagation();
+    onRename(folder, "folder");
+    setMenuOpen(false);
+  };
+
+
 
   return (
     <div
@@ -99,13 +113,13 @@ const FolderGridItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 bottom-full mb-2 z-[9999]"
+                className="absolute right-0 top-full mt-1 z-[9999]"
               >
                 <FolderMenu
                   folder={folder}
                   onClose={() => setMenuOpen(false)}
-                  onDelete={() => deleteFolder(folder.id)}
-                  onRename={() => onRename(folder)}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
                 />
               </div>
             )}

@@ -10,9 +10,6 @@ import {
   FolderPlus,
   Trash2,
   Share2,
-  Download,
-  MoreVertical,
-  ChevronRight,
   Star,
   HardDrive,
   RefreshCw,
@@ -30,7 +27,7 @@ import FileListItem from "../components/FileListItem";
 import FolderListItem from "../components/FolderListItem";
 import CreateFolderModal from "../components/CreateFolderModal";
 import RenameModal from "../components/RenameModal";
-import ShareModal from "../components/ShareModal";
+
 
 const API_BASE = "http://localhost:8000";
 
@@ -107,6 +104,7 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
   const createFolder = async () => {
     if (!newFolderName.trim()) {
       toast.error("Folder name cannot be empty");
@@ -223,22 +221,21 @@ const Dashboard = () => {
     }
 
     try {
-      const endpoint =
-        renameData.type === "folder"
-          ? `${API_BASE}/folders/rename`
-          : `${API_BASE}/myfiles/rename`;
+      let endpoint, requestBody;
 
-      // Prepare the request body based on type
-      const requestBody =
-        renameData.type === "folder"
-          ? {
-              folder_id: renameData.id, // Note: Your API expects number for folder_id
-              new_name: renameData.name,
-            }
-          : {
-              file_id: renameData.id, // Note: Your API expects string for file_id
-              new_name: renameData.name,
-            };
+      if (renameData.type === "folder") {
+        endpoint = `${API_BASE}/folders/rename`;
+        requestBody = {
+          folder_id: renameData.id,
+          new_name: renameData.name,
+        };
+      } else {
+        endpoint = `${API_BASE}/myfiles/rename`;
+        requestBody = {
+          file_id: renameData.id,
+          new_name: renameData.name,
+        };
+      }
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -250,7 +247,6 @@ const Dashboard = () => {
       });
 
       if (!res.ok) {
-        // Get the error message from response if available
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || "Rename failed");
       }
@@ -341,7 +337,7 @@ const Dashboard = () => {
   );
 
   return (
-     <div className="flex h-screen bg-gray-50 text-gray-800">
+    <div className="flex h-screen bg-gray-50 text-gray-800">
       {/* Sidebar */}
       <div className="hidden md:flex md:flex-shrink-0">
         <div className="flex flex-col w-64 border-r border-gray-200 bg-white">
@@ -516,14 +512,20 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* File/Folder Content - Enhanced */}
-        <div className="flex-1 overflow-y-auto bg-gray-50">
+        {/* File/Folder Content */}
+        <div className="flex-1 overflow-y-auto overflow-visible bg-gray-50">
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <RefreshCw className="animate-spin h-8 w-8 text-blue-500" />
             </div>
           ) : filteredFolders.length === 0 && filteredFiles.length === 0 ? (
-            <EmptyState setShowCreateFolderModal={setShowCreateFolderModal} />
+            <EmptyState
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              setShowCreateFolderModal={setShowCreateFolderModal}
+              uploading={uploading}
+              handleFileUpload={uploadFile}
+            />
           ) : viewMode === "grid" ? (
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {filteredFolders.map((folder) => (
@@ -535,7 +537,6 @@ const Dashboard = () => {
                   }
                   onDelete={() => deleteFolder(folder.id)}
                   onRename={() => handleRenameClick(folder, "folder")}
-                  onShare={() => handleShareClick(folder, "folder")}
                   isSelected={selectedItems.some(
                     (item) => item.id === folder.id && item.type === "folder"
                   )}
@@ -549,7 +550,6 @@ const Dashboard = () => {
                   onDownload={() => downloadFile(file)}
                   onDelete={() => deleteFile(file.id)}
                   onRename={() => handleRenameClick(file, "file")}
-                  onShare={() => handleShareClick(file, "file")}
                   onClick={() => navigate(`/preview/${file.id}`)}
                   isSelected={selectedItems.some(
                     (item) => item.id === file.id && item.type === "file"
@@ -559,9 +559,9 @@ const Dashboard = () => {
               ))}
             </div>
           ) : (
-            <div className="p-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="p-4 overflow-visible">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-visible">
+                <table className="min-w-full divide-y divide-gray-200 overflow-visible">
                   <thead className="bg-gray-50">
                     <tr>
                       <th
@@ -590,7 +590,7 @@ const Dashboard = () => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-200 overflow-visible">
                     {filteredFolders.map((folder) => (
                       <FolderListItem
                         key={folder.id}
@@ -600,7 +600,6 @@ const Dashboard = () => {
                         }
                         onDelete={() => deleteFolder(folder.id)}
                         onRename={() => handleRenameClick(folder, "folder")}
-                        onShare={() => handleShareClick(folder, "folder")}
                       />
                     ))}
                     {filteredFiles.map((file) => (
@@ -610,7 +609,6 @@ const Dashboard = () => {
                         onDownload={() => downloadFile(file)}
                         onDelete={() => deleteFile(file.id)}
                         onRename={() => handleRenameClick(file, "file")}
-                        onShare={() => handleShareClick(file, "file")}
                         onClick={() => navigate(`/preview/${file.id}`)}
                       />
                     ))}
@@ -638,14 +636,6 @@ const Dashboard = () => {
         setName={(name) => setRenameData({ ...renameData, name })}
         onRename={renameItem}
         type={renameData.type}
-      />
-
-      <ShareModal
-        show={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        itemId={shareData.id}
-        itemType={shareData.type}
-        token={token}
       />
     </div>
   );

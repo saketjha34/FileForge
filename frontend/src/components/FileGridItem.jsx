@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FileText, Download, MoreVertical, Check } from "lucide-react";
-import PropTypes from "prop-types";
 import FileMenu from "./FileMenu";
 
 const FileGridItem = ({
@@ -10,7 +9,6 @@ const FileGridItem = ({
   onDownload,
   onDelete,
   onRename,
-  onShare,
   isSelected,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -126,15 +124,14 @@ const FileGridItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 bottom-full mb-2 z-[9999]"
+                className="absolute right-0 top-full mt-1 z-[9999]"
               >
                 <FileMenu
+                  file={file}
                   onClose={() => setMenuOpen(false)}
-                  onDownload={() => onDownload(file)}
                   onDelete={() => onDelete(file.id)}
                   onRename={() => onRename(file)}
-                  onShare={() => onShare(file)}
-                  file={file}
+                  onDownload={() => onDownload(file)}
                 />
               </div>
             )}
@@ -144,7 +141,5 @@ const FileGridItem = ({
     </div>
   );
 };
-
-
 
 export default FileGridItem;

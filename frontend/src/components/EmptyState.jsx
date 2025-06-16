@@ -5,6 +5,8 @@ const EmptyState = ({
   searchQuery,
   setSearchQuery,
   setShowCreateFolderModal,
+  uploading,
+  handleFileUpload, // This will be the upload function from Dashboard
 }) => {
   return (
     <div className="flex flex-col items-center justify-center h-64 text-gray-500">
@@ -16,10 +18,19 @@ const EmptyState = ({
         <div className="mt-4 flex gap-3">
           <label
             htmlFor="upload-input"
-            className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 transition duration-150"
+            className={`cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 transition duration-150 ${
+              uploading ? "opacity-70 cursor-not-allowed" : ""
+            }`}
           >
             <UploadCloud size={18} />
-            <span>Upload files</span>
+            <span>{uploading ? "Uploading..." : "Upload files"}</span>
+            <input
+              id="upload-input"
+              type="file"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={uploading}
+            />
           </label>
           <button
             onClick={() => setShowCreateFolderModal(true)}

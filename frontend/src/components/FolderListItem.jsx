@@ -5,7 +5,7 @@ import FolderMenu from "./FolderMenu";
 const FolderListItem = ({
   folder,
   navigateToFolder,
-  deleteFolder,
+  onDelete,
   onRename,
   onClick,
 }) => {
@@ -34,8 +34,23 @@ const FolderListItem = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    onDelete(folder.id);
+    setMenuOpen(false);
+  };
+
+  const handleRename = (e) => {
+    e.stopPropagation();
+    onRename(folder);
+    setMenuOpen(false);
+  };
+
   return (
-    <tr className="hover:bg-gray-50 cursor-pointer" onClick={handleRowClick}>
+    <tr
+      className="hover:bg-gray-50 cursor-pointer relative"
+      onClick={handleRowClick}
+    >
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-blue-50 rounded-lg">
@@ -70,7 +85,7 @@ const FolderListItem = ({
 
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end items-center gap-2 no-preview">
-          <div className="relative z-[60]">
+          <div className="relative">
             <button
               ref={menuButtonRef}
               onClick={(e) => {
@@ -79,20 +94,20 @@ const FolderListItem = ({
               }}
               className="text-gray-400 hover:text-gray-600 p-1"
               title="More options"
-              aria-label="Folder options"
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
             >
               <MoreVertical size={16} />
             </button>
+
             {menuOpen && (
-              <div className="absolute right-0 top-6 z-[60] menu-container">
+              <div
+                ref={menuRef}
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+              >
                 <FolderMenu
-                  ref={menuRef}
                   folder={folder}
                   onClose={() => setMenuOpen(false)}
-                  onDelete={() => deleteFolder(folder.id)}
-                  onRename={() => onRename(folder)}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
                 />
               </div>
             )}

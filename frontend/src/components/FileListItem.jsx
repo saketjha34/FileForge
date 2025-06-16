@@ -1,4 +1,3 @@
-// src/components/FileListItem.js
 import React, { useState, useRef, useEffect } from "react";
 import { FileText, Download, MoreVertical } from "lucide-react";
 import FileMenu from "./FileMenu";
@@ -8,7 +7,6 @@ const FileListItem = ({
   onDownload,
   onDelete,
   onRename,
-  onShare,
   onClick,
   isSelected,
 }) => {
@@ -38,11 +36,12 @@ const FileListItem = ({
 
   return (
     <tr
-      className={`hover:bg-gray-50 cursor-pointer ${
+      className={`hover:bg-gray-50 cursor-pointer relative ${
         isSelected ? "bg-blue-50" : ""
       }`}
       onClick={handleRowClick}
     >
+      {/* File details cells */}
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-blue-50 rounded-lg">
@@ -72,6 +71,8 @@ const FileListItem = ({
           {(file.size / 1024).toFixed(2)} KB
         </div>
       </td>
+
+      {/* Action buttons cell */}
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end items-center gap-2 no-preview">
           <button
@@ -84,6 +85,8 @@ const FileListItem = ({
           >
             <Download size={16} />
           </button>
+
+          {/* Menu button and dropdown */}
           <div className="relative">
             <button
               ref={menuButtonRef}
@@ -96,15 +99,28 @@ const FileListItem = ({
             >
               <MoreVertical size={16} />
             </button>
+
+            {/* Menu dropdown */}
             {menuOpen && (
-              <div ref={menuRef} className="absolute right-0 top-6 z-[9999]">
+              <div
+                ref={menuRef}
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                style={{ top: "100%", zIndex: 9999 }}
+              >
                 <FileMenu
                   onClose={() => setMenuOpen(false)}
-                  onDownload={() => onDownload(file)}
-                  onDelete={() => onDelete(file.id)}
-                  onRename={() => onRename(file)}
-                  onShare={() => onShare(file)}
-                  file={file}
+                  onDownload={() => {
+                    onDownload(file);
+                    setMenuOpen(false);
+                  }}
+                  onDelete={() => {
+                    onDelete(file.id);
+                    setMenuOpen(false);
+                  }}
+                  onRename={() => {
+                    onRename(file);
+                    setMenuOpen(false);
+                  }}
                 />
               </div>
             )}
