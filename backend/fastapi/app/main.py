@@ -10,7 +10,7 @@ from app.db import models, database
 from app.db.database import get_db
 from app.auth import jwt, users
 from app.auth.jwt import get_current_user_id
-from app.routes import files, folders
+from app.routes import files, folders, favorites
 from app.storage import minio_client
 
 
@@ -34,6 +34,7 @@ app.add_middleware(
 # Include routers
 app.include_router(files.router)
 app.include_router(folders.router)
+app.include_router(favorites.router)
 
 # Initialize database schema
 models.Base.metadata.create_all(bind=database.engine)

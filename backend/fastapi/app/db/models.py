@@ -13,6 +13,7 @@ class User(Base):
     date_modified = Column(DateTime, nullable=True)
 
     files = relationship("File", back_populates="user")
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete")
 
 
 class File(Base):
@@ -45,3 +46,17 @@ class Folder(Base):
     owner = relationship("User", backref="folders")
     parent = relationship("Folder", remote_side=[id], backref="subfolders")
     files = relationship("File", back_populates="folder")
+    
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    file_id = Column(String, ForeignKey("files.id"), nullable=True)
+    folder_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="favorites")
+    file = relationship("File", backref="favorited_by")
+    folder = relationship("Folder", backref="favorited_by")
