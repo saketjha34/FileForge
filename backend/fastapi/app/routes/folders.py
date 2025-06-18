@@ -1,14 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import Optional, Union, List
+import os
+import io
+import logging
 from app.db import models
-from app.db.database import get_db
-from app.auth.jwt import get_current_user_id
-from pydantic import BaseModel
-from app.schema.folders import FolderInfo, FolderDetails
-from pydantic import BaseModel, Field
-from app.utils.folders_utils import delete_folder_recursive
 from datetime import datetime
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app.db.database import get_db
+from pydantic import BaseModel, Field
+from typing import Optional, Union, List
+from app.auth.jwt import get_current_user_id
+from fastapi.responses import StreamingResponse
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
+from app.schema.folders import FolderInfo, FolderDetails
+from fastapi import APIRouter, Depends, HTTPException, Body
+from app.utils.folders_utils import delete_folder_recursive
+from app.storage.minio_client import download_file as minio_download_file
 
 
 router = APIRouter()
@@ -322,3 +328,80 @@ def rename_folder(
     db.refresh(folder)
 
     return {"message": "Folder renamed successfully", "folder_id": folder.id, "new_name": folder.name}
+
+
+
+@router.get(
+    "/folders/download/{folder_id}",
+    summary="Download a folder as a ZIP",
+    description="Recursively downloads a folder (including nested files and subfolders) as a compressed ZIP archive.",
+    tags=["Folders"]
+)
+def download_folder_as_zip(
+    folder_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Recursively downloads all files in a folder (including nested subfolders) as a zip archive.
+
+    Args:
+        folder_id (int): The root folder ID to download.
+        db (Session): SQLAlchemy session.
+        user_id (int): Authenticated user ID.
+
+    Returns:
+        StreamingResponse: In-memory zip file of the entire folder structure.
+    """
+    # Step 1: Fetch and validate root folder
+    root_folder = db.query(models.Folder).filter(
+        models.Folder.id == folder_id,
+        models.Folder.owner_id == user_id
+    ).first()
+
+    if not root_folder:
+        raise HTTPException(status_code=404, detail="Folder not found or access denied")
+
+    zip_stream = io.BytesIO()
+
+    def add_folder_to_zip(zipf: ZipFile, current_folder: models.Folder, path_prefix=""):
+        # Add files in current folder
+        db_files = db.query(models.File).filter(
+            models.File.folder_id == current_folder.id,
+            models.File.owner_id == user_id
+        ).all()
+
+        for file in db_files:
+            try:
+                file_obj = minio_download_file(file.id)
+                file_path = os.path.join(path_prefix, file.filename)
+                file_bytes = file_obj.read()
+
+                zip_info = ZipInfo(file_path)
+                zip_info.compress_type = ZIP_DEFLATED
+                zipf.writestr(zip_info, file_bytes)
+            except Exception as e:
+                logging.error(f"Error downloading file {file.filename} from MinIO: {e}")
+
+        # Recursively add subfolders
+        subfolders = db.query(models.Folder).filter(
+            models.Folder.parent_id == current_folder.id,
+            models.Folder.owner_id == user_id
+        ).all()
+
+        for subfolder in subfolders:
+            add_folder_to_zip(zipf, subfolder, os.path.join(path_prefix, subfolder.name))
+
+    # Step 2: Build ZIP archive
+    with ZipFile(zip_stream, mode="w", compression=ZIP_DEFLATED) as zipf:
+        add_folder_to_zip(zipf, root_folder, root_folder.name)
+
+    zip_stream.seek(0)
+
+    return StreamingResponse(
+        zip_stream,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename={root_folder.name}.zip"
+        }
+    )
