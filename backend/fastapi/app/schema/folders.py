@@ -15,6 +15,7 @@ class FolderInfo(BaseModel):
     date_modified: Optional[datetime] = Field(
         None, description="Timestamp when the folder was last modified"
     )
+    item_count: int = Field(..., description="Number of immediate files and subfolders")
 
     class Config:
         from_attributes = True  # Enables ORM mode
@@ -50,6 +51,6 @@ class FolderDetails(BaseModel):
     )
     files: List[FileInfo] = Field(default_factory=list, description="List of files inside the folder")
     subfolders: List[SubFolderInfo] = Field(default_factory=list, description="List of immediate subfolders")
-
+    item_count: int = Field(..., description="Number of direct files and subfolders inside this folder")
     class Config:
         from_attributes = True

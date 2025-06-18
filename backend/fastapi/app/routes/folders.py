@@ -41,19 +41,7 @@ def create_folder(
 ) -> FolderInfo:
     """
     Create a new folder for the authenticated user.
-
-    Args:
-        folder_req (FolderCreateRequest): Folder creation request payload.
-        db (Session): Database session injected by FastAPI.
-        user_id (int): Current authenticated user's ID.
-
-    Returns:
-        FolderInfo: Metadata of the newly created folder.
-
-    Raises:
-        HTTPException(400): For invalid `parent_id` or unauthorized parent folder.
     """
-    # Normalize parent_id to int or None
     parent_id = folder_req.parent_id
     if parent_id in (None, "", "null"):
         parent_id = None
@@ -63,7 +51,6 @@ def create_folder(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid parent_id")
 
-    # Verify parent folder ownership and existence if parent_id is provided
     parent_folder = None
     if parent_id:
         parent_folder = db.query(models.Folder).filter(
@@ -73,26 +60,33 @@ def create_folder(
         if not parent_folder:
             raise HTTPException(status_code=400, detail="Parent folder not found or access denied")
 
-    # Create new folder instance
+    # Create new folder
     new_folder = models.Folder(
         name=folder_req.name,
         owner_id=user_id,
         parent_id=parent_id,
         created_at=datetime.utcnow(),
-        date_modified=None  # No modifications yet
+        date_modified=None
     )
 
-    # Persist new folder
     db.add(new_folder)
     db.commit()
     db.refresh(new_folder)
 
-    # Update parent folder modification date if applicable
+    # Update parent folder's modified time
     if parent_folder:
         parent_folder.date_modified = datetime.utcnow()
         db.commit()
 
-    return new_folder
+    # Return with item_count = 0
+    return FolderInfo(
+        id=new_folder.id,
+        name=new_folder.name,
+        parent_id=new_folder.parent_id,
+        created_at=new_folder.created_at,
+        date_modified=new_folder.date_modified,
+        item_count=0
+    )
 
 
 
@@ -108,21 +102,36 @@ def get_my_folders(
     user_id: int = Depends(get_current_user_id)
 ) -> List[FolderInfo]:
     """
-    Fetch all top-level folders for the current authenticated user.
-
-    Args:
-        db (Session): Database session dependency.
-        user_id (int): Current user's ID obtained via authentication.
-
-    Returns:
-        List[FolderInfo]: List of metadata for the user's top-level folders.
+    Fetch all top-level folders for the current authenticated user,
+    along with the count of direct files and subfolders they contain.
     """
-    folders = db.query(models.Folder).filter(
+    top_folders = db.query(models.Folder).filter(
         models.Folder.owner_id == user_id,
-        models.Folder.parent_id.is_(None)  # Only root-level folders
+        models.Folder.parent_id.is_(None)
     ).all()
-    
-    return folders
+
+    result = []
+    for folder in top_folders:
+        file_count = db.query(models.File).filter(
+            models.File.folder_id == folder.id,
+            models.File.owner_id == user_id
+        ).count()
+        
+        subfolder_count = db.query(models.Folder).filter(
+            models.Folder.parent_id == folder.id,
+            models.Folder.owner_id == user_id
+        ).count()
+
+        result.append(FolderInfo(
+            id=folder.id,
+            name=folder.name,
+            parent_id=folder.parent_id,
+            created_at=folder.created_at,
+            date_modified=folder.date_modified,
+            item_count=file_count + subfolder_count
+        ))
+
+    return result
 
 
 
@@ -142,18 +151,9 @@ def get_folder_details(
     Retrieve detailed information about a specific folder owned by the user,
     including its metadata, the list of files it contains, and its direct subfolders.
 
-    Args:
-        folder_id (int): The ID of the folder to retrieve.
-        db (Session): Database session dependency.
-        user_id (int): ID of the current authenticated user.
-
-    Raises:
-        HTTPException 404: If folder does not exist or user does not own it.
-
     Returns:
         FolderDetails: Folder metadata along with lists of files and subfolders.
     """
-    # Fetch the folder ensuring ownership
     folder = db.query(models.Folder).filter(
         models.Folder.id == folder_id,
         models.Folder.owner_id == user_id
@@ -162,19 +162,20 @@ def get_folder_details(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    # Fetch files inside this folder owned by user
+    # Fetch files and subfolders
     files = db.query(models.File).filter(
         models.File.folder_id == folder_id,
         models.File.owner_id == user_id
     ).all()
 
-    # Fetch immediate subfolders owned by user
     subfolders = db.query(models.Folder).filter(
         models.Folder.parent_id == folder_id,
         models.Folder.owner_id == user_id
     ).all()
 
-    # Return combined folder details
+    # Count = total of files + subfolders
+    item_count = len(files) + len(subfolders)
+
     return FolderDetails(
         id=folder.id,
         name=folder.name,
@@ -183,7 +184,8 @@ def get_folder_details(
         created_at=folder.created_at,
         date_modified=folder.date_modified,
         files=files,
-        subfolders=subfolders
+        subfolders=subfolders,
+        item_count=item_count
     )
 
 
