@@ -144,7 +144,6 @@ def remove_from_favorites(
     return FavoriteRemoveResponse(detail="Removed from favorites")
 
 
-from typing import List
 
 class FavoriteResponse(BaseModel):
     """
@@ -155,7 +154,6 @@ class FavoriteResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 @router.get(
     "/favorites",
@@ -189,7 +187,7 @@ def get_favorites(
         models.Favorite.user_id == user_id
     ).all()
 
-    # Step 2: Split into file and folder IDs
+    # Split into file and folder IDs
     file_ids = [fav.file_id for fav in favorites if fav.file_id]
     folder_ids = [fav.folder_id for fav in favorites if fav.folder_id]
 
