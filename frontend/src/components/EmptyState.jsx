@@ -1,20 +1,27 @@
 import React from "react";
-import { Folder, UploadCloud, FolderPlus } from "lucide-react";
+import { Folder, UploadCloud, FolderPlus, Star, Heart } from "lucide-react";
 
 const EmptyState = ({
   searchQuery,
   setSearchQuery,
   setShowCreateFolderModal,
   uploading,
-  handleFileUpload, // This will be the upload function from Dashboard
+  handleFileUpload,
+  isFavoritesPage,
 }) => {
   return (
     <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-      <Folder size={48} className="mb-4" />
+     
+        <Folder size={48} className="mb-4" />
+    
       <p className="text-lg">
-        {searchQuery ? "No results found" : "This folder is empty"}
+        {searchQuery
+          ? "No results found"
+          : isFavoritesPage
+          ? "You don't have any favorites yet"
+          : "This folder is empty"}
       </p>
-      {!searchQuery && (
+      {!searchQuery && !isFavoritesPage && (
         <div className="mt-4 flex gap-3">
           <label
             htmlFor="upload-input"
@@ -30,6 +37,7 @@ const EmptyState = ({
               className="hidden"
               onChange={handleFileUpload}
               disabled={uploading}
+              multiple
             />
           </label>
           <button

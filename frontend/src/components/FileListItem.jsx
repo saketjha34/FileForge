@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { FileText, Download, MoreVertical } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { FileText, Download, MoreVertical, Heart } from "lucide-react";
 import FileMenu from "./FileMenu";
 
 const FileListItem = ({
@@ -7,12 +7,14 @@ const FileListItem = ({
   onDownload,
   onDelete,
   onRename,
+  onFavorite,
   onClick,
   isSelected,
+  isFavorite,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef();
-  const menuButtonRef = useRef();
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   const handleRowClick = (e) => {
     if (!e.target.closest("button") && !e.target.closest(".no-preview")) {
@@ -34,6 +36,12 @@ const FileListItem = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleFavorite = (e) => {
+    e.stopPropagation();
+    onFavorite(file.id, "file");
+    setMenuOpen(false);
+  };
+
   return (
     <tr
       className={`hover:bg-gray-50 cursor-pointer relative ${
@@ -41,7 +49,6 @@ const FileListItem = ({
       }`}
       onClick={handleRowClick}
     >
-      {/* File details cells */}
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-blue-50 rounded-lg">
@@ -57,6 +64,7 @@ const FileListItem = ({
           </div>
         </div>
       </td>
+
       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
         <div className="text-sm text-gray-500">
           {new Date(file.upload_time).toLocaleDateString("en-US", {
@@ -66,13 +74,13 @@ const FileListItem = ({
           })}
         </div>
       </td>
+
       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
         <div className="text-sm text-gray-500">
           {(file.size / 1024).toFixed(2)} KB
         </div>
       </td>
 
-      {/* Action buttons cell */}
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end items-center gap-2 no-preview">
           <button
@@ -86,7 +94,16 @@ const FileListItem = ({
             <Download size={16} />
           </button>
 
-          {/* Menu button and dropdown */}
+          <button
+            onClick={handleFavorite}
+            className={`p-1 ${
+              isFavorite ? "text-red-500" : "text-gray-400 hover:text-gray-600"
+            }`}
+            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
+          </button>
+
           <div className="relative">
             <button
               ref={menuButtonRef}
@@ -94,20 +111,19 @@ const FileListItem = ({
                 e.stopPropagation();
                 setMenuOpen(!menuOpen);
               }}
-              className="text-gray-400 hover:text-gray-600 p-1 transition-colors"
+              className="text-gray-400 hover:text-gray-600 p-1"
               title="More options"
             >
               <MoreVertical size={16} />
             </button>
 
-            {/* Menu dropdown */}
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                style={{ top: "100%", zIndex: 9999 }}
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none"
               >
                 <FileMenu
+                  file={file}
                   onClose={() => setMenuOpen(false)}
                   onDownload={() => {
                     onDownload(file);
@@ -121,6 +137,8 @@ const FileListItem = ({
                     onRename(file);
                     setMenuOpen(false);
                   }}
+                  onFavorite={handleFavorite}
+                  isFavorite={isFavorite}
                 />
               </div>
             )}

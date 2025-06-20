@@ -1,15 +1,12 @@
 import React, { forwardRef } from "react";
-import { Edit2, Share2, Trash2, Download, Star, Link } from "lucide-react";
+import { Edit2, Link, Star, Trash2, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
 const FileMenu = forwardRef(
-  ({ onClose, onDownload, onDelete, onRename, file }, ref) => {
-    const handleAction = (action, e) => {
-      e?.stopPropagation();
-      action();
-      onClose();
-    };
-
+  (
+    { file, onClose, onDownload, onDelete, onRename, onFavorite, isFavorite },
+    ref
+  ) => {
     const handleCopyLink = async (e) => {
       e?.stopPropagation();
       try {
@@ -18,65 +15,79 @@ const FileMenu = forwardRef(
         onClose();
       } catch (err) {
         toast.error("Failed to copy link");
-        console.error("Clipboard error:", err);
       }
+    };
+
+    const handleFavorite = (e) => {
+      e?.stopPropagation();
+      onFavorite();
+      onClose();
+    };
+
+    const handleDelete = (e) => {
+      e?.stopPropagation();
+      onDelete(file.id);
+      onClose();
+    };
+
+    const handleRename = (e) => {
+      e?.stopPropagation();
+      onRename(file);
+      onClose();
+    };
+
+    const handleDownload = (e) => {
+      e?.stopPropagation();
+      onDownload(file);
+      onClose();
     };
 
     return (
       <div
         ref={ref}
-        className="w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none"
-        role="menu"
-        aria-orientation="vertical"
-        aria-labelledby="options-menu"
+        className="w-48 bg-white rounded-md shadow-lg py-1 focus:outline-none"
       >
         <button
-          onClick={(e) => handleAction(onDownload, e)}
+          onClick={handleDownload}
           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-          role="menuitem"
         >
           <Download size={14} className="mr-3" />
           Download
         </button>
 
         <button
-          onClick={(e) => handleAction(onRename, e)}
+          onClick={handleRename}
           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-          role="menuitem"
         >
           <Edit2 size={14} className="mr-3" />
           Rename
         </button>
 
-
         <button
           onClick={handleCopyLink}
           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-          role="menuitem"
         >
           <Link size={14} className="mr-3" />
           Copy Link
         </button>
 
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toast("Favorite feature coming soon!");
-            onClose();
-          }}
+          onClick={handleFavorite}
           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-          role="menuitem"
         >
-          <Star size={14} className="mr-3" />
-          Add to favorites
+          <Star
+            size={14}
+            className="mr-3"
+            fill={isFavorite ? "currentColor" : "none"}
+          />
+          {isFavorite ? "Remove favorite" : "Add to favorites"}
         </button>
 
         <div className="border-t border-gray-200 my-1" />
 
         <button
-          onClick={(e) => handleAction(onDelete, e)}
+          onClick={handleDelete}
           className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
-          role="menuitem"
         >
           <Trash2 size={14} className="mr-3" />
           Delete
@@ -87,4 +98,5 @@ const FileMenu = forwardRef(
 );
 
 FileMenu.displayName = "FileMenu";
+
 export default FileMenu;

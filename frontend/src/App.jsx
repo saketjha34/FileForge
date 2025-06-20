@@ -4,8 +4,11 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import FavoritesPage from "./pages/FavoritesPage";
+import SharedPage from "./pages/SharedPage";
 import Navbar from "./components/Navbar";
 import FilePreview from "./components/FilePreview";
+import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
   return (
@@ -16,8 +19,41 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/preview/:id" element={<FilePreview />} />
+
+          {/* Protected dashboard routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard/favorites"
+            element={
+              <PrivateRoute>
+                <FavoritesPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/dashboard/shared"
+            element={
+              <PrivateRoute>
+                <SharedPage />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/preview/:id"
+            element={
+              <PrivateRoute>
+                <FilePreview />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </div>
     </Router>

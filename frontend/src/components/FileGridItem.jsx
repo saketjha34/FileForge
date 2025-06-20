@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FileText, Download, MoreVertical, Check } from "lucide-react";
+import { FileText, Download, MoreVertical, Check, Heart } from "lucide-react";
 import FileMenu from "./FileMenu";
 
 const FileGridItem = ({
@@ -9,23 +9,14 @@ const FileGridItem = ({
   onDownload,
   onDelete,
   onRename,
+  onFavorite,
   isSelected,
+  isFavorite,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
-
-  const handleContextMenu = (e) => {
-    e.preventDefault();
-    setMenuOpen(true);
-  };
-
-  const handleClick = (e) => {
-    if (!e.target.closest("button") && !e.target.closest(".no-preview")) {
-      onClick?.();
-    }
-  };
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -41,16 +32,44 @@ const FileGridItem = ({
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  const handleFavorite = (e) => {
+    e?.stopPropagation();
+    onFavorite();
+    setMenuOpen(false);
+  };
+
   return (
     <div
       className={`relative bg-white rounded-xl border-2 ${
         isSelected ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-100"
       } overflow-visible shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group`}
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
+      onClick={() => onClick?.()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setMenuOpen(true);
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Favorite icon */}
+      <div
+        className={`absolute top-3 right-3 z-10 ${
+          isHovered || isFavorite ? "opacity-100" : "opacity-0"
+        } transition-opacity`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onFavorite();
+        }}
+      >
+        <Heart
+          className={`h-5 w-5 ${
+            isFavorite
+              ? "fill-red-500 text-red-500"
+              : "text-gray-400 hover:text-red-500"
+          } transition-colors`}
+        />
+      </div>
+
       {/* Selection checkbox */}
       <div
         className={`absolute top-3 left-3 w-5 h-5 rounded-md flex items-center justify-center transition-all ${
@@ -100,7 +119,6 @@ const FileGridItem = ({
             }}
             className="text-gray-500 hover:text-blue-500 p-1 no-preview transition-colors"
             title="Download"
-            aria-label="Download file"
           >
             <Download size={16} strokeWidth={2} />
           </button>
@@ -132,6 +150,8 @@ const FileGridItem = ({
                   onDelete={() => onDelete(file.id)}
                   onRename={() => onRename(file)}
                   onDownload={() => onDownload(file)}
+                  onFavorite={handleFavorite}
+                  isFavorite={isFavorite}
                 />
               </div>
             )}

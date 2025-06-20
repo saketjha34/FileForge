@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, MoreVertical } from "lucide-react";
+import { Folder, MoreVertical, Heart } from "lucide-react";
 import FolderMenu from "./FolderMenu";
 
 const FolderListItem = ({
@@ -7,7 +7,10 @@ const FolderListItem = ({
   navigateToFolder,
   onDelete,
   onRename,
+  onFavorite,
   onClick,
+  isFavorite,
+  isSelected,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -34,6 +37,11 @@ const FolderListItem = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleFavorite = (e) => {
+    e.stopPropagation();
+    onFavorite(folder.id, "folder");
+  };
+
   const handleDelete = (e) => {
     e.stopPropagation();
     onDelete(folder.id);
@@ -48,7 +56,9 @@ const FolderListItem = ({
 
   return (
     <tr
-      className="hover:bg-gray-50 cursor-pointer relative"
+      className={`hover:bg-gray-50 cursor-pointer relative ${
+        isSelected ? "bg-blue-50" : ""
+      }`}
       onClick={handleRowClick}
     >
       <td className="px-6 py-4 whitespace-nowrap">
@@ -61,7 +71,7 @@ const FolderListItem = ({
               {folder.name}
             </div>
             <div className="text-sm text-gray-500 md:hidden">
-              {folder.items_count || 0} items
+              {folder.item_count || 0} items
             </div>
           </div>
         </div>
@@ -79,12 +89,22 @@ const FolderListItem = ({
 
       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
         <div className="text-sm text-gray-500">
-          {folder.items_count || 0} items
+          {folder.item_count || 0} items
         </div>
       </td>
 
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end items-center gap-2 no-preview">
+          <button
+            onClick={handleFavorite}
+            className={`p-1 ${
+              isFavorite ? "text-red-500" : "text-gray-400 hover:text-gray-600"
+            }`}
+            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
+          </button>
+
           <div className="relative">
             <button
               ref={menuButtonRef}
@@ -101,13 +121,15 @@ const FolderListItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none"
               >
                 <FolderMenu
                   folder={folder}
                   onClose={() => setMenuOpen(false)}
                   onDelete={handleDelete}
                   onRename={handleRename}
+                  onFavorite={handleFavorite}
+                  isFavorite={isFavorite}
                 />
               </div>
             )}

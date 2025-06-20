@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, MoreVertical, Check } from "lucide-react";
+import { Folder, MoreVertical, Check, Heart } from "lucide-react";
 import FolderMenu from "./FolderMenu";
 
 const FolderGridItem = ({
@@ -8,7 +8,9 @@ const FolderGridItem = ({
   onDelete,
   onSelect,
   onRename,
+  onFavorite,
   isSelected,
+  isFavorite,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -29,29 +31,44 @@ const FolderGridItem = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleDelete = (e) => {
+  const handleFavorite = async (e) => {
     e?.stopPropagation();
-    onDelete(folder.id);
+    try {
+      await onFavorite();
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+    }
     setMenuOpen(false);
   };
-
-  const handleRename = (e) => {
-    e?.stopPropagation();
-    onRename(folder, "folder");
-    setMenuOpen(false);
-  };
-
-
 
   return (
     <div
       className={`relative bg-white rounded-xl border-2 ${
         isSelected ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-100"
       } overflow-visible shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group`}
-      onClick={() => navigateToFolder()}
+      onClick={() => navigateToFolder(folder.id, folder.name)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Favorite icon */}
+      <div
+        className={`absolute top-3 right-3 z-10 ${
+          isHovered || isFavorite ? "opacity-100" : "opacity-0"
+        } transition-opacity`}
+        onClick={async (e) => {
+          e.stopPropagation();
+          await onFavorite();
+        }}
+      >
+        <Heart
+          className={`h-5 w-5 ${
+            isFavorite
+              ? "fill-red-500 text-red-500"
+              : "text-gray-400 hover:text-red-500"
+          } transition-colors`}
+        />
+      </div>
+
       {/* Selection checkbox */}
       <div
         className={`absolute top-3 left-3 w-5 h-5 rounded-md flex items-center justify-center transition-all ${
@@ -79,7 +96,7 @@ const FolderGridItem = ({
             {folder.name}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {folder.items_count || 0} items
+            {folder.item_count || 0} items
           </p>
         </div>
       </div>
@@ -87,11 +104,7 @@ const FolderGridItem = ({
       {/* Footer with actions */}
       <div className="border-t border-gray-100 px-4 py-3 flex justify-between items-center bg-gray-50/50 group-hover:bg-gray-100/50 transition-colors overflow-visible">
         <span className="text-xs text-gray-500">
-          {new Date(folder.created_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
+          {new Date(folder.created_at).toLocaleDateString()}
         </span>
         <div className="flex gap-2 relative overflow-visible">
           <div className="relative no-preview overflow-visible">
@@ -103,9 +116,6 @@ const FolderGridItem = ({
               }}
               className="text-gray-500 hover:text-gray-700 p-1 transition-colors"
               title="More options"
-              aria-label="Folder options"
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
             >
               <MoreVertical size={16} strokeWidth={2} />
             </button>
@@ -118,8 +128,10 @@ const FolderGridItem = ({
                 <FolderMenu
                   folder={folder}
                   onClose={() => setMenuOpen(false)}
-                  onDelete={handleDelete}
-                  onRename={handleRename}
+                  onDelete={() => onDelete(folder.id)}
+                  onRename={() => onRename(folder)}
+                  onFavorite={handleFavorite}
+                  isFavorite={isFavorite}
                 />
               </div>
             )}

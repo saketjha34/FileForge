@@ -9,6 +9,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", newToken);
     setToken(newToken);
   };
+    const user = (newToken) => {
+      localStorage.setItem("name", newToken);
+      setToken(newToken);
+    };
 
   const logout = () => {
     localStorage.removeItem("token"); // Delete token from storage
@@ -22,7 +26,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, login, logout }}>
+    <AuthContext.Provider value={{ token, login, logout,user }}>
       {children}
     </AuthContext.Provider>
   );

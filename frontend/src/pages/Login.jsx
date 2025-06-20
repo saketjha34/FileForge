@@ -9,7 +9,7 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const { login, token } = useAuth();
+  const { login, token ,user } = useAuth();
 
   useEffect(() => {
     if (token) {
@@ -37,6 +37,7 @@ const Login = () => {
       if (response.ok) {
         toast.success("Login successful");
         login(data.access_token);
+        user(username)
         setUsername("");
         setPassword("");
         setTimeout(() => navigate("/dashboard"), 1000);
