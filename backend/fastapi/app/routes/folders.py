@@ -11,8 +11,8 @@ from typing import Optional, Union, List
 from app.auth.jwt import get_current_user_id
 from fastapi.responses import StreamingResponse
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
-from app.schema.folders import FolderInfo, FolderDetails
-from fastapi import APIRouter, Depends, HTTPException, Body
+from app.schema.folders import FolderInfo, FolderDetails, SubFolderInfo
+from fastapi import APIRouter, Depends, HTTPException
 from app.utils.folders_utils import delete_folder_recursive
 from app.storage.minio_client import download_file as minio_download_file
 
@@ -174,10 +174,31 @@ def get_folder_details(
         models.File.owner_id == user_id
     ).all()
 
-    subfolders = db.query(models.Folder).filter(
+    raw_subfolders = db.query(models.Folder).filter(
         models.Folder.parent_id == folder_id,
         models.Folder.owner_id == user_id
     ).all()
+
+    subfolders = []
+    for subfolder in raw_subfolders:
+        sub_files_count = db.query(models.File).filter(
+            models.File.folder_id == subfolder.id,
+            models.File.owner_id == user_id
+        ).count()
+
+        sub_subfolders_count = db.query(models.Folder).filter(
+            models.Folder.parent_id == subfolder.id,
+            models.Folder.owner_id == user_id
+        ).count()
+
+        subfolders.append(SubFolderInfo(
+            id=subfolder.id,
+            name=subfolder.name,
+            parent_id=subfolder.parent_id,
+            created_at=subfolder.created_at,
+            date_modified=subfolder.date_modified,
+            item_count=sub_files_count + sub_subfolders_count
+        ))
 
     # Count = total of files + subfolders
     item_count = len(files) + len(subfolders)

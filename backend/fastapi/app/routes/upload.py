@@ -23,6 +23,8 @@ router = APIRouter()
     "/upload_files",
     tags=["Upload"],
     summary="Upload a file to the server",
+    response_model=FileInfo,
+    description="Uploads a file to the server and stores its metadata in the database."
 )
 def upload_files(
     file: UploadFile = File(...),
@@ -32,7 +34,7 @@ def upload_files(
     ),
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
-):
+) -> FileInfo:
     """
     Upload a single file to the server.
 
@@ -93,12 +95,7 @@ def upload_files(
     db.commit()
     db.refresh(db_file)
 
-    return {
-        "file_id": file_id,
-        "mime_type": file.content_type,
-        "size": size,
-        "folder_id": folder_id_int
-    }
+    return db_file
 
 
 

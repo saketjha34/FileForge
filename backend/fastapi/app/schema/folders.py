@@ -32,7 +32,7 @@ class SubFolderInfo(BaseModel):
     date_modified: Optional[datetime] = Field(
         None, description="Timestamp when the subfolder was last modified"
     )
-
+    item_count: int = Field(..., description="Number of immediate files and subfolders in this subfolder")
     class Config:
         from_attributes = True
 
