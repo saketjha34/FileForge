@@ -4,32 +4,29 @@ import { useDashboard } from "../components/Dashboard/DashboardHooks";
 import EmptyState from "../components/EmptyState";
 
 const FavoritesPage = () => {
-  const dashboardProps = useDashboard();
+  const dashboardProps = useDashboard({ isFavoritesPage: true });
+
   const {
-    folders,
-    files,
-    isFavorite,
+    currentFolder,
     searchQuery,
     setSearchQuery,
     uploading,
-    handleFileUpload,
+    uploadFile,
     setShowCreateFolderModal,
-    isFavoritesPage = true,
+    isEmpty,
+    favoriteFolders,
+    favoriteFiles,
   } = dashboardProps;
 
-  const filteredFolders = folders.filter((folder) =>
-    isFavorite(folder.id, "folder")
-  );
-  const filteredFiles = files.filter((file) => isFavorite(file.id, "file"));
-
+  // Check if we're at the root favorites page with no favorites
   const noFavorites =
-    filteredFolders.length === 0 && filteredFiles.length === 0;
+    !currentFolder &&
+    favoriteFolders.length === 0 &&
+    favoriteFiles.length === 0;
 
   return (
     <Dashboard
       {...dashboardProps}
-      filteredFolders={filteredFolders}
-      filteredFiles={filteredFiles}
       isFavoritesPage={true}
       customEmptyState={
         noFavorites && (
@@ -38,8 +35,8 @@ const FavoritesPage = () => {
             setSearchQuery={setSearchQuery}
             setShowCreateFolderModal={setShowCreateFolderModal}
             uploading={uploading}
-            handleFileUpload={handleFileUpload}
-            isFavoritesPage={isFavoritesPage}
+            handleFileUpload={uploadFile}
+            isFavoritesPage={true}
           />
         )
       }

@@ -18,7 +18,7 @@ const FileListItem = ({
 
   const handleRowClick = (e) => {
     if (!e.target.closest("button") && !e.target.closest(".no-preview")) {
-      onClick?.();
+      onClick?.(file.id);
     }
   };
 
@@ -35,10 +35,36 @@ const FileListItem = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return "0 Bytes";
 
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
   const handleFavorite = (e) => {
-    e.stopPropagation();
+    e?.stopPropagation();
     onFavorite(file.id, "file");
+    setMenuOpen(false);
+  };
+
+  const handleDelete = (e) => {
+    e?.stopPropagation();
+    onDelete(file.id);
+    setMenuOpen(false);
+  };
+
+  const handleRename = (e) => {
+    e?.stopPropagation();
+    onRename(file);
+    setMenuOpen(false);
+  };
+
+  const handleDownload = (e) => {
+    e?.stopPropagation();
+    onDownload(file);
     setMenuOpen(false);
   };
 
@@ -59,7 +85,7 @@ const FileListItem = ({
               {file.filename}
             </div>
             <div className="text-sm text-gray-500 md:hidden">
-              {(file.size / 1024).toFixed(2)} KB
+              {formatFileSize(file.size)}
             </div>
           </div>
         </div>
@@ -76,19 +102,14 @@ const FileListItem = ({
       </td>
 
       <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-        <div className="text-sm text-gray-500">
-          {(file.size / 1024).toFixed(2)} KB
-        </div>
+        <div className="text-sm text-gray-500">{formatFileSize(file.size)}</div>
       </td>
 
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end items-center gap-2 no-preview">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload(file);
-            }}
-            className="text-gray-400 hover:text-blue-600 p-1 transition-colors"
+            onClick={handleDownload}
+            className="text-gray-400 hover:text-blue-600 p-1 transition-colors cursor-pointer"
             title="Download"
           >
             <Download size={16} />
@@ -96,9 +117,11 @@ const FileListItem = ({
 
           <button
             onClick={handleFavorite}
-            className={`p-1 ${
-              isFavorite ? "text-red-500" : "text-gray-400 hover:text-gray-600"
-            }`}
+            className={`p-1 cursor-pointer ${
+              isFavorite
+                ? "text-red-500 hover:text-red-600"
+                : "text-gray-400 hover:text-gray-600"
+            } transition-colors`}
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
@@ -111,7 +134,7 @@ const FileListItem = ({
                 e.stopPropagation();
                 setMenuOpen(!menuOpen);
               }}
-              className="text-gray-400 hover:text-gray-600 p-1"
+              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
               title="More options"
             >
               <MoreVertical size={16} />
@@ -120,23 +143,15 @@ const FileListItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none"
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
               >
                 <FileMenu
                   file={file}
                   onClose={() => setMenuOpen(false)}
-                  onDownload={() => {
-                    onDownload(file);
-                    setMenuOpen(false);
-                  }}
-                  onDelete={() => {
-                    onDelete(file.id);
-                    setMenuOpen(false);
-                  }}
-                  onRename={() => {
-                    onRename(file);
-                    setMenuOpen(false);
-                  }}
+                  onDownload={handleDownload}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
                   onFavorite={handleFavorite}
                   isFavorite={isFavorite}
                 />
@@ -148,5 +163,6 @@ const FileListItem = ({
     </tr>
   );
 };
+
 
 export default FileListItem;

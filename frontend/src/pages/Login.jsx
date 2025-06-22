@@ -1,5 +1,4 @@
-// Login.js - Updated with enhanced styling
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import BASE_URL from "../config";
 import { toast } from "react-hot-toast";
@@ -8,17 +7,14 @@ import { useAuth } from "../contexts/AuthContext";
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, token ,user } = useAuth();
-
-  useEffect(() => {
-    if (token) {
-      navigate("/dashboard");
-    }
-  }, [token, navigate]);
+  const { login, user } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+
     try {
       const formData = new URLSearchParams();
       formData.append("username", username);
@@ -37,23 +33,24 @@ const Login = () => {
       if (response.ok) {
         toast.success("Login successful");
         login(data.access_token);
-        user(username)
+        user(username);
         setUsername("");
         setPassword("");
-        setTimeout(() => navigate("/dashboard"), 1000);
+        navigate("/dashboard");
       } else {
         toast.error(data.detail || "Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("Server error. Please try again.");
+      toast.error("Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white p-10 rounded-2xl shadow-xl">
-        {/* Logo/Header */}
         <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-100 p-3 rounded-full">
@@ -77,7 +74,6 @@ const Login = () => {
           <p className="text-gray-500 mt-2">Sign in to access your files</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label
@@ -113,39 +109,15 @@ const Login = () => {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label
-                htmlFor="remember-me"
-                className="ml-2 block text-sm text-gray-700"
-              >
-                Remember me
-              </label>
-            </div>
-            <div className="text-sm">
-              <a
-                href="#"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                Forgot password?
-              </a>
-            </div>
-          </div>
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition duration-300"
+            disabled={isLoading}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition duration-300 disabled:opacity-70"
           >
-            Sign In
+            {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{" "}

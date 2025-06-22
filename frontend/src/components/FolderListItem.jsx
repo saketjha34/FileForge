@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, MoreVertical, Heart } from "lucide-react";
+import { Folder, MoreVertical, Heart, Download } from "lucide-react";
 import FolderMenu from "./FolderMenu";
+
 
 const FolderListItem = ({
   folder,
@@ -11,6 +12,7 @@ const FolderListItem = ({
   onClick,
   isFavorite,
   isSelected,
+  onDownload,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -38,19 +40,24 @@ const FolderListItem = ({
   }, []);
 
   const handleFavorite = (e) => {
-    e.stopPropagation();
+    e?.stopPropagation();
     onFavorite(folder.id, "folder");
+    setMenuOpen(false);
   };
 
-  const handleDelete = (e) => {
-    e.stopPropagation();
+  const handleDelete = () => {
     onDelete(folder.id);
     setMenuOpen(false);
   };
 
-  const handleRename = (e) => {
-    e.stopPropagation();
+  const handleRename = () => {
     onRename(folder);
+    setMenuOpen(false);
+  };
+
+  const handleDownload = (e) => {
+    e?.stopPropagation();
+    onDownload(folder);
     setMenuOpen(false);
   };
 
@@ -71,7 +78,7 @@ const FolderListItem = ({
               {folder.name}
             </div>
             <div className="text-sm text-gray-500 md:hidden">
-              {folder.item_count || 0} items
+             {folder.item_count || 0} items
             </div>
           </div>
         </div>
@@ -96,13 +103,26 @@ const FolderListItem = ({
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end items-center gap-2 no-preview">
           <button
+            onClick={handleDownload}
+            className="text-gray-400 hover:text-blue-600 p-1 transition-colors cursor-pointer"
+            title="Download"
+          >
+            <Download size={16} />
+          </button>
+          <button
             onClick={handleFavorite}
-            className={`p-1 ${
-              isFavorite ? "text-red-500" : "text-gray-400 hover:text-gray-600"
-            }`}
+            className={`p-1 cursor-pointer ${
+              isFavorite
+                ? "text-red-500 hover:text-red-600"
+                : "text-gray-400 hover:text-gray-600"
+            } transition-colors`}
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
-            <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
+            <Heart
+              size={16}
+              fill={isFavorite ? "currentColor" : "none"}
+              className={isFavorite ? "" : "group-hover:fill-gray-200"}
+            />
           </button>
 
           <div className="relative">
@@ -112,7 +132,7 @@ const FolderListItem = ({
                 e.stopPropagation();
                 setMenuOpen(!menuOpen);
               }}
-              className="text-gray-400 hover:text-gray-600 p-1"
+              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
               title="More options"
             >
               <MoreVertical size={16} />
@@ -121,7 +141,8 @@ const FolderListItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none"
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
               >
                 <FolderMenu
                   folder={folder}
@@ -130,6 +151,7 @@ const FolderListItem = ({
                   onRename={handleRename}
                   onFavorite={handleFavorite}
                   isFavorite={isFavorite}
+                  onDownload={handleDownload}
                 />
               </div>
             )}

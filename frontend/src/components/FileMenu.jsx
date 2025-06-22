@@ -8,56 +8,32 @@ const FileMenu = forwardRef(
     ref
   ) => {
     const handleCopyLink = async (e) => {
-      e?.stopPropagation();
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success("Link copied to clipboard!");
-        onClose();
-      } catch (err) {
-        toast.error("Failed to copy link");
-      }
+      
     };
 
-    const handleFavorite = (e) => {
+    const handleAction = (e, action) => {
       e?.stopPropagation();
-      onFavorite();
-      onClose();
-    };
-
-    const handleDelete = (e) => {
-      e?.stopPropagation();
-      onDelete(file.id);
-      onClose();
-    };
-
-    const handleRename = (e) => {
-      e?.stopPropagation();
-      onRename(file);
-      onClose();
-    };
-
-    const handleDownload = (e) => {
-      e?.stopPropagation();
-      onDownload(file);
+      action();
       onClose();
     };
 
     return (
       <div
         ref={ref}
-        className="w-48 bg-white rounded-md shadow-lg py-1 focus:outline-none"
+        className="w-48 bg-white rounded-md shadow-lg py-1 focus:outline-none cursor-pointer"
+        onClick={(e) => e.stopPropagation()}
       >
         <button
-          onClick={handleDownload}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+          onClick={(e) => handleAction(e, onDownload)}
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
         >
           <Download size={14} className="mr-3" />
           Download
         </button>
 
         <button
-          onClick={handleRename}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+          onClick={(e) => handleAction(e, onRename)}
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
         >
           <Edit2 size={14} className="mr-3" />
           Rename
@@ -65,15 +41,15 @@ const FileMenu = forwardRef(
 
         <button
           onClick={handleCopyLink}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
         >
           <Link size={14} className="mr-3" />
           Copy Link
         </button>
 
         <button
-          onClick={handleFavorite}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+          onClick={(e) => handleAction(e, onFavorite)}
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
         >
           <Star
             size={14}
@@ -86,8 +62,8 @@ const FileMenu = forwardRef(
         <div className="border-t border-gray-200 my-1" />
 
         <button
-          onClick={handleDelete}
-          className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
+          onClick={(e) => handleAction(e, onDelete)}
+          className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left cursor-pointer"
         >
           <Trash2 size={14} className="mr-3" />
           Delete

@@ -7,6 +7,7 @@ const Breadcrumbs = ({
   setCurrentFolder,
   folderPath,
   setFolderPath,
+  isFavoritesPage = false,
 }) => {
   const navigateTo = (index) => {
     const newPath = folderPath.slice(0, index + 1);
@@ -28,14 +29,16 @@ const Breadcrumbs = ({
               setCurrentFolder(null);
               setFolderPath([]);
             }}
-            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200"
-            aria-label="All files"
+            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+            aria-label="Root"
           >
             <HardDrive
               className="mr-2 h-4 w-4 flex-shrink-0"
               aria-hidden="true"
             />
-            <span className="font-medium">All Files</span>
+            <span className="font-medium">
+              {isFavoritesPage ? "Favorites" : "All Files"}
+            </span>
           </button>
         </li>
 
@@ -50,7 +53,7 @@ const Breadcrumbs = ({
               className={`font-medium transition-colors duration-200 ${
                 index === folderPath.length - 1
                   ? "text-blue-600 cursor-default"
-                  : "text-gray-600 hover:text-blue-600"
+                  : "text-gray-600 hover:text-blue-600 cursor-pointer"
               }`}
               aria-current={
                 index === folderPath.length - 1 ? "page" : undefined
@@ -65,6 +68,7 @@ const Breadcrumbs = ({
     </nav>
   );
 };
+
 
 
 export default Breadcrumbs;

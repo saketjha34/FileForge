@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useViewMode } from "../../contexts/ViewModeContext";
@@ -7,11 +7,11 @@ import { Grid, List, Heart } from "lucide-react";
 
 const API_BASE = "http://localhost:8000";
 
-export const useDashboard = () => {
-  const { token } = useAuth();
+export const useDashboard = ({ isFavoritesPage = false } = {}) => {
+  const token = localStorage.getItem("token");
   const { viewMode, updateViewMode } = useViewMode();
   const navigate = useNavigate();
-
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [favorites, setFavorites] = useState({
@@ -26,7 +26,6 @@ export const useDashboard = () => {
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [renameData, setRenameData] = useState({
     id: null,
@@ -40,6 +39,27 @@ export const useDashboard = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+   const filteredFiles = useMemo(
+     () =>
+       files.filter((file) =>
+         file.filename.toLowerCase().includes(searchQuery.toLowerCase())
+       ),
+     [files, searchQuery]
+   );
+
+   const filteredFolders = useMemo(
+     () =>
+       folders.filter((folder) =>
+         folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+       ),
+     [folders, searchQuery]
+   );
+
+   const isEmpty = useMemo(
+     () => filteredFolders.length === 0 && filteredFiles.length === 0,
+     [filteredFolders, filteredFiles]
+   );
+
   useEffect(() => {
     if (!token) {
       navigate("/login");
@@ -49,67 +69,150 @@ export const useDashboard = () => {
     fetchFavorites();
   }, [token, navigate, currentFolder]);
 
-  const fetchFolderContents = async () => {
-    setLoading(true);
-    try {
-      if (currentFolder) {
-        const res = await fetch(
-          `${API_BASE}/folders/${currentFolder}/details`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!res.ok) throw new Error("Failed to fetch folder details");
+  const uploadFolder = async (e) => {
+    const zipFile = e.target.files[0];
+    if (!zipFile) return;
 
-        const data = await res.json();
-        setFolders(data.subfolders || []);
-        setFiles(data.files || []);
-      } else {
-        const [foldersRes, filesRes] = await Promise.all([
-          fetch(`${API_BASE}/folders`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_BASE}/myfiles`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-        if (!foldersRes.ok || !filesRes.ok)
-          throw new Error("Failed to fetch root contents");
-
-        setFolders(await foldersRes.json());
-        setFiles(await filesRes.json());
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Failed to load contents");
-    } finally {
-      setLoading(false);
+    // Check if the file is a ZIP
+    if (!zipFile.type.includes("zip") && !zipFile.name.endsWith(".zip")) {
+      toast.error("Please upload a ZIP file");
+      e.target.value = null;
+      return;
     }
-  };
 
-  const fetchFavorites = async () => {
+    setUploading(true);
     try {
-      const res = await fetch(`${API_BASE}/favorites`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const formData = new FormData();
+      formData.append("zip_file", zipFile);
+
+      // Construct URL with folder_id as query parameter if currentFolder exists
+      const url = currentFolder
+        ? `${API_BASE}/upload_zip_file?folder_id=${currentFolder}`
+        : `${API_BASE}/upload_zip_file`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+        body: formData,
       });
-      if (!res.ok) throw new Error("Failed to fetch favorites");
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to upload folder");
+      }
+
       const data = await res.json();
-      setFavorites(data);
+      toast.success(`Folder "${data.name}" uploaded successfully`);
+      fetchFolderContents();
     } catch (error) {
-      console.error("Error fetching favorites:", error);
-      toast.error("Failed to load favorites");
+      console.error("Error uploading folder:", error);
+      toast.error(error.message || "Failed to upload folder");
+    } finally {
+      setUploading(false);
+      e.target.value = null;
+    }
+  };
+  const downloadFolder = async (folderId) => {
+    try {
+      const res = await fetch(`${API_BASE}/folders/download/${folderId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to download folder");
+      }
+
+      // Assuming the API returns a ZIP file
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Get folder name to use as download filename
+      const folder = folders.find((f) => f.id === folderId);
+      const folderName = folder?.name || "folder";
+
+      // Create download link
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${folderName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("Folder download started");
+    } catch (error) {
+      console.error("Error downloading folder:", error);
+      toast.error(error.message || "Failed to download folder");
     }
   };
 
+   const fetchFolderContents = async () => {
+     setLoading(true);
+     try {
+       if (currentFolder) {
+         // For nested folders, fetch all contents normally
+         const url = `${API_BASE}/folders/${currentFolder}/details`;
+         const res = await fetch(url, {
+           headers: { Authorization: `Bearer ${token}` },
+         });
+         if (!res.ok) throw new Error("Failed to fetch folder details");
+         const data = await res.json();
+         setFolders(data.subfolders || []);
+         setFiles(data.files || []);
+       } else {
+         // At root level, apply favorites filter if on favorites page
+         if (isFavoritesPage) {
+           setFolders(favorites.folders.filter((f) => !f.parent));
+           setFiles(favorites.files.filter((f) => !f.parent));
+         } else {
+           // Normal root folder contents
+           const [foldersRes, filesRes] = await Promise.all([
+             fetch(`${API_BASE}/folders`, {
+               headers: { Authorization: `Bearer ${token}` },
+             }),
+             fetch(`${API_BASE}/myfiles`, {
+               headers: { Authorization: `Bearer ${token}` },
+             }),
+           ]);
+           if (!foldersRes.ok || !filesRes.ok)
+             throw new Error("Failed to fetch root contents");
+           setFolders(await foldersRes.json());
+           setFiles(await filesRes.json());
+         }
+       }
+     } catch (error) {
+       console.error("Error:", error);
+       toast.error("Failed to load contents");
+     } finally {
+       setLoading(false);
+     }
+   };
+
+   const fetchFavorites = async () => {
+     try {
+       const res = await fetch(`${API_BASE}/favorites`, {
+         headers: { Authorization: `Bearer ${token}` },
+       });
+       if (!res.ok) throw new Error("Failed to fetch favorites");
+       const data = await res.json();
+       setFavorites({ files: data.files || [], folders: data.folders || [] });
+     } catch (error) {
+       console.error("Error fetching favorites:", error);
+       toast.error("Failed to load favorites");
+     }
+   };
   const addToFavorites = async (item) => {
     try {
-      const body = {};
-      if (item.type === "file") {
-        body.file_id = item.id;
-      } else {
-        body.folder_id = item.id;
-      }
-
+      const body =
+        item.type === "file" ? { file_id: item.id } : { folder_id: item.id };
       const res = await fetch(`${API_BASE}/favorites`, {
         method: "POST",
         headers: {
@@ -118,11 +221,7 @@ export const useDashboard = () => {
         },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to add to favorites");
-      }
+      if (!res.ok) throw new Error("Failed to add to favorites");
 
       toast.success("Added to favorites");
       await fetchFavorites();
@@ -134,13 +233,8 @@ export const useDashboard = () => {
 
   const removeFromFavorites = async (item) => {
     try {
-      const body = {};
-      if (item.type === "file") {
-        body.file_id = item.id;
-      } else {
-        body.folder_id = item.id;
-      }
-
+      const body =
+        item.type === "file" ? { file_id: item.id } : { folder_id: item.id };
       const res = await fetch(`${API_BASE}/favorites`, {
         method: "DELETE",
         headers: {
@@ -149,11 +243,7 @@ export const useDashboard = () => {
         },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to remove from favorites");
-      }
+      if (!res.ok) throw new Error("Failed to remove from favorites");
 
       toast.success("Removed from favorites");
       await fetchFavorites();
@@ -163,37 +253,73 @@ export const useDashboard = () => {
     }
   };
 
-  const isFavorite = (id, type) => {
-    if (type === "file") {
-      return favorites.files.some((file) => file.id === id);
-    } else {
-      return favorites.folders.some((folder) => folder.id === id);
+  const toggleFavorite = async (id, type) => {
+    const isCurrentlyFavorite = isFavorite(id, type);
+    try {
+      const endpoint = isCurrentlyFavorite ? "DELETE" : "POST";
+      const body = type === "file" ? { file_id: id } : { folder_id: id };
+
+      const res = await fetch(`${API_BASE}/favorites`, {
+        method: endpoint,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok)
+        throw new Error(
+          `Failed to ${isCurrentlyFavorite ? "remove" : "add"} favorite`
+        );
+
+      toast.success(
+        isCurrentlyFavorite ? "Removed from favorites" : "Added to favorites"
+      );
+      await fetchFavorites();
+
+      // If we're on favorites page and removing a favorite, refetch contents
+      if (isFavoritesPage && isCurrentlyFavorite && !currentFolder) {
+        fetchFolderContents();
+      }
+    } catch (error) {
+      console.error(
+        `Error ${isCurrentlyFavorite ? "removing" : "adding"} favorite:`,
+        error
+      );
+      toast.error(
+        error.message ||
+          `Failed to ${isCurrentlyFavorite ? "remove" : "add"} favorite`
+      );
     }
   };
 
-  const toggleFavorite = (id, type) => {
-    const item = { id, type };
-    if (isFavorite(id, type)) {
-      removeFromFavorites(item);
-    } else {
-      addToFavorites(item);
-    }
+  const isFavorite = (id, type) => {
+    return type === "file"
+      ? favorites.files.some((f) => f.id === id)
+      : favorites.folders.some((f) => f.id === id);
   };
 
   const favoriteIcon = (item) => (
     <button
       onClick={(e) => {
         e.stopPropagation();
-        toggleFavorite({ id: item.id, type: item.type || "file" });
+        toggleFavorite(item.id, item.type || "file");
       }}
       className="text-gray-400 hover:text-yellow-500 transition-colors"
-      title={isFavorite(item.id, item.type || "file") ? "Remove from favorites" : "Add to favorites"}
+      title={
+        isFavorite(item.id, item.type || "file")
+          ? "Remove from favorites"
+          : "Add to favorites"
+      }
     >
-      {isFavorite(item.id, item.type || "file") ? (
-        <Heart className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-      ) : (
-        <Heart className="h-4 w-4" />
-      )}
+      <Heart
+        className={`h-4 w-4 ${
+          isFavorite(item.id, item.type || "file")
+            ? "fill-yellow-500 text-yellow-500"
+            : ""
+        }`}
+      />
     </button>
   );
 
@@ -396,50 +522,14 @@ export const useDashboard = () => {
     setSelectedItems([]);
   };
 
-  const filteredFiles = files.filter((file) =>
-    file.filename.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const filteredFolders = folders.filter((folder) =>
-    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const favoriteFiles = favorites.files || [];
-  const favoriteFolders = favorites.folders || [];
-
-  const viewModeToggleButtons = (
-    <div className="flex items-center space-x-0.5 bg-gray-100 rounded-md p-0.5">
-      <button
-        onClick={() => updateViewMode("grid")}
-        className={`p-2 rounded ${
-          viewMode === "grid"
-            ? "bg-white shadow-sm text-blue-600"
-            : "text-gray-600 hover:bg-gray-200"
-        } transition-colors duration-150`}
-        title="Grid view"
-      >
-        <Grid className="h-4 w-4" />
-      </button>
-      <button
-        onClick={() => updateViewMode("list")}
-        className={`p-2 rounded ${
-          viewMode === "list"
-            ? "bg-white shadow-sm text-blue-600"
-            : "text-gray-600 hover:bg-gray-200"
-        } transition-colors duration-150`}
-        title="List view"
-      >
-        <List className="h-4 w-4" />
-      </button>
-    </div>
-  );
 
   return {
     token,
     files,
     folders,
     favorites,
-    favoriteFiles,
-    favoriteFolders,
+    favoriteFiles: favorites.files,
+    favoriteFolders: favorites.folders,
     loading,
     uploading,
     searchQuery,
@@ -469,7 +559,32 @@ export const useDashboard = () => {
     filteredFiles,
     filteredFolders,
     viewMode,
-    viewModeToggleButtons,
+    viewModeToggleButtons: (
+      <div className="flex items-center space-x-0.5 bg-gray-100 rounded-md p-0.5">
+        <button
+          onClick={() => updateViewMode("grid")}
+          className={`p-2 rounded ${
+            viewMode === "grid"
+              ? "bg-white shadow-sm text-blue-600"
+              : "text-gray-600 hover:bg-gray-200"
+          } transition-colors duration-150`}
+          title="Grid view"
+        >
+          <Grid className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => updateViewMode("list")}
+          className={`p-2 rounded ${
+            viewMode === "list"
+              ? "bg-white shadow-sm text-blue-600"
+              : "text-gray-600 hover:bg-gray-200"
+          } transition-colors duration-150`}
+          title="List view"
+        >
+          <List className="h-4 w-4" />
+        </button>
+      </div>
+    ),
     fetchFolderContents,
     fetchFavorites,
     createFolder,
@@ -489,5 +604,10 @@ export const useDashboard = () => {
     favoriteIcon,
     addToFavorites,
     removeFromFavorites,
+    uploadFolder,
+    downloadFolder,
+    isFavoritesPage,
+    showFavoritesModal,
+    setShowFavoritesModal,
   };
 };

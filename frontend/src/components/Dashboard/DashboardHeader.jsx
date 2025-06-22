@@ -8,12 +8,15 @@ import {
   Search,
   X,
   ChevronLeft,
+  FolderInput,
 } from "lucide-react";
 import Breadcrumbs from "../BreadCrumbs";
 
 const DashboardHeader = ({
   currentFolder,
+  setCurrentFolder,
   folderPath,
+  setFolderPath,
   navigateUp,
   searchQuery,
   setSearchQuery,
@@ -22,8 +25,10 @@ const DashboardHeader = ({
   viewModeToggleButtons,
   uploading,
   uploadFile,
+  uploadFolder,
   setShowCreateFolderModal,
   selectedItems,
+  setSelectedItems,
   deleteFile,
   deleteFolder,
   handleShareClick,
@@ -37,19 +42,24 @@ const DashboardHeader = ({
           <button
             onClick={navigateUp}
             disabled={!currentFolder}
-            className={`p-1.5 rounded-full ${
+            className={`p-1.5 rounded-full cursor-pointer ${
               currentFolder
                 ? "hover:bg-gray-100 text-gray-700"
-                : "text-gray-400"
+                : "text-gray-400 cursor-not-allowed"
             } transition-colors duration-150`}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <Breadcrumbs currentFolder={currentFolder} folderPath={folderPath} />
+          <Breadcrumbs
+            currentFolder={currentFolder}
+            setCurrentFolder={setCurrentFolder}
+            folderPath={folderPath}
+            setFolderPath={setFolderPath}
+          />
         </div>
         <div className="flex items-center space-x-3">
           <div
-            className={`relative flex items-center px-3 py-2 rounded-md transition-all duration-150 ${
+            className={`relative flex items-center px-3 py-2 rounded-md transition-all duration-150 cursor-text ${
               isSearchFocused
                 ? "bg-white ring-2 ring-blue-500 shadow-sm"
                 : "bg-gray-100 hover:bg-gray-200"
@@ -72,7 +82,7 @@ const DashboardHeader = ({
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="ml-2 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+                className="ml-2 text-gray-500 hover:text-gray-700 transition-colors duration-150 cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -95,7 +105,7 @@ const DashboardHeader = ({
             }`}
           >
             <Upload className="h-4 w-4 mr-2" />
-            Upload
+            Upload File
             {uploading && <RefreshCw className="ml-2 h-3 w-3 animate-spin" />}
           </label>
           <input
@@ -104,10 +114,31 @@ const DashboardHeader = ({
             className="hidden"
             onChange={uploadFile}
             disabled={uploading}
+            multiple
           />
+
+          <label
+            htmlFor="folder-upload"
+            className={`flex items-center px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors duration-150 ${
+              uploading ? "opacity-70 cursor-not-allowed" : ""
+            }`}
+          >
+            <FolderInput className="h-4 w-4 mr-2" />
+            Upload Folder (ZIP)
+            {uploading && <RefreshCw className="ml-2 h-3 w-3 animate-spin" />}
+          </label>
+          <input
+            id="folder-upload"
+            type="file"
+            className="hidden"
+            onChange={uploadFolder}
+            disabled={uploading}
+            accept=".zip,application/zip"
+          />
+
           <button
             onClick={() => setShowCreateFolderModal(true)}
-            className="flex items-center px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 transition-colors duration-150"
+            className="flex items-center px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 transition-colors duration-150 cursor-pointer"
           >
             <FolderPlus className="h-4 w-4 mr-2" />
             New Folder
@@ -125,7 +156,7 @@ const DashboardHeader = ({
                   });
                   setSelectedItems([]);
                 }}
-                className="flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-red-600 transition-colors duration-150"
+                className="flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-red-600 transition-colors duration-150 cursor-pointer"
                 title="Delete selected"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -140,7 +171,7 @@ const DashboardHeader = ({
                 }}
                 className={`flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md ${
                   selectedItems.length === 1
-                    ? "hover:bg-gray-50 text-gray-700"
+                    ? "hover:bg-gray-50 text-gray-700 cursor-pointer"
                     : "text-gray-400 cursor-not-allowed"
                 } transition-colors duration-150`}
                 title={
@@ -156,7 +187,7 @@ const DashboardHeader = ({
           )}
           <button
             onClick={fetchFolderContents}
-            className={`p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition-colors duration-150 ${
+            className={`p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition-colors duration-150 cursor-pointer ${
               loading ? "animate-spin" : ""
             }`}
             title="Refresh"

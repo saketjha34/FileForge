@@ -34,8 +34,25 @@ const FileGridItem = ({
 
   const handleFavorite = (e) => {
     e?.stopPropagation();
-    onFavorite();
+    onFavorite(file.id, "file");
     setMenuOpen(false);
+  };
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return "0 Bytes";
+
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+  const handleSelect = (e) => {
+    e.stopPropagation();
+    onSelect(file.id, "file", !isSelected);
+  };
+
+  const handleClick = () => {
+    onClick?.(file.id);
   };
 
   return (
@@ -43,7 +60,7 @@ const FileGridItem = ({
       className={`relative bg-white rounded-xl border-2 ${
         isSelected ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-100"
       } overflow-visible shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group`}
-      onClick={() => onClick?.()}
+      onClick={handleClick}
       onContextMenu={(e) => {
         e.preventDefault();
         setMenuOpen(true);
@@ -55,11 +72,8 @@ const FileGridItem = ({
       <div
         className={`absolute top-3 right-3 z-10 ${
           isHovered || isFavorite ? "opacity-100" : "opacity-0"
-        } transition-opacity`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onFavorite();
-        }}
+        } transition-opacity cursor-pointer`}
+        onClick={handleFavorite}
       >
         <Heart
           className={`h-5 w-5 ${
@@ -78,11 +92,8 @@ const FileGridItem = ({
             : isHovered
             ? "bg-white border border-gray-300 opacity-100"
             : "opacity-0"
-        } no-preview z-10`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(file.id, "file", !isSelected);
-        }}
+        } no-preview z-10 cursor-pointer`}
+        onClick={handleSelect}
       >
         {isSelected && <Check size={14} strokeWidth={3} />}
       </div>
@@ -97,7 +108,7 @@ const FileGridItem = ({
             {file.filename}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {(file.size / 1024).toFixed(2)} KB
+            {formatFileSize(file.size)}
           </p>
         </div>
       </div>
@@ -117,7 +128,7 @@ const FileGridItem = ({
               e.stopPropagation();
               onDownload(file);
             }}
-            className="text-gray-500 hover:text-blue-500 p-1 no-preview transition-colors"
+            className="text-gray-500 hover:text-blue-500 p-1 no-preview transition-colors cursor-pointer"
             title="Download"
           >
             <Download size={16} strokeWidth={2} />
@@ -130,7 +141,7 @@ const FileGridItem = ({
                 e.stopPropagation();
                 setMenuOpen(!menuOpen);
               }}
-              className="text-gray-500 hover:text-gray-700 p-1 transition-colors"
+              className="text-gray-500 hover:text-gray-700 p-1 transition-colors cursor-pointer"
               title="More options"
               aria-label="File options"
               aria-haspopup="true"
@@ -142,7 +153,8 @@ const FileGridItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 top-full mt-1 z-[9999]"
+                className="absolute right-0 top-full mt-1 z-[9999] cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
               >
                 <FileMenu
                   file={file}
@@ -161,5 +173,6 @@ const FileGridItem = ({
     </div>
   );
 };
+
 
 export default FileGridItem;

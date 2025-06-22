@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, MoreVertical, Check, Heart } from "lucide-react";
+import { Folder, MoreVertical, Check, Heart, Download } from "lucide-react";
 import FolderMenu from "./FolderMenu";
+
 
 const FolderGridItem = ({
   folder,
+  onDownload,
   navigateToFolder,
   onDelete,
   onSelect,
@@ -31,14 +33,19 @@ const FolderGridItem = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleFavorite = async (e) => {
+  const handleFavorite = (e) => {
     e?.stopPropagation();
-    try {
-      await onFavorite();
-    } catch (error) {
-      console.error("Failed to toggle favorite:", error);
-    }
+    onFavorite(folder.id, "folder");
     setMenuOpen(false);
+  };
+
+  const handleSelect = (e) => {
+    e.stopPropagation();
+    onSelect(folder.id, "folder", !isSelected);
+  };
+
+  const handleClick = () => {
+    navigateToFolder(folder.id, folder.name);
   };
 
   return (
@@ -46,7 +53,7 @@ const FolderGridItem = ({
       className={`relative bg-white rounded-xl border-2 ${
         isSelected ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-100"
       } overflow-visible shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group`}
-      onClick={() => navigateToFolder(folder.id, folder.name)}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -54,11 +61,8 @@ const FolderGridItem = ({
       <div
         className={`absolute top-3 right-3 z-10 ${
           isHovered || isFavorite ? "opacity-100" : "opacity-0"
-        } transition-opacity`}
-        onClick={async (e) => {
-          e.stopPropagation();
-          await onFavorite();
-        }}
+        } transition-opacity cursor-pointer`}
+        onClick={handleFavorite}
       >
         <Heart
           className={`h-5 w-5 ${
@@ -77,11 +81,8 @@ const FolderGridItem = ({
             : isHovered
             ? "bg-white border border-gray-300 opacity-100"
             : "opacity-0"
-        } no-preview z-10`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(folder.id, "folder", !isSelected);
-        }}
+        } no-preview z-10 cursor-pointer`}
+        onClick={handleSelect}
       >
         {isSelected && <Check size={14} strokeWidth={3} />}
       </div>
@@ -107,35 +108,45 @@ const FolderGridItem = ({
           {new Date(folder.created_at).toLocaleDateString()}
         </span>
         <div className="flex gap-2 relative overflow-visible">
-          <div className="relative no-preview overflow-visible">
-            <button
-              ref={menuButtonRef}
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(!menuOpen);
-              }}
-              className="text-gray-500 hover:text-gray-700 p-1 transition-colors"
-              title="More options"
-            >
-              <MoreVertical size={16} strokeWidth={2} />
-            </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownload(folder);
+            }}
+            className="text-gray-400 hover:text-blue-600 p-1 transition-colors cursor-pointer"
+            title="Download"
+          >
+            <Download size={16} />
+          </button>
+          <button
+            ref={menuButtonRef}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(!menuOpen);
+            }}
+            className="text-gray-500 hover:text-gray-700 p-1 transition-colors cursor-pointer"
+            title="More options"
+          >
+            <MoreVertical size={16} strokeWidth={2} />
+          </button>
 
-            {menuOpen && (
-              <div
-                ref={menuRef}
-                className="absolute right-0 top-full mt-1 z-[9999]"
-              >
-                <FolderMenu
-                  folder={folder}
-                  onClose={() => setMenuOpen(false)}
-                  onDelete={() => onDelete(folder.id)}
-                  onRename={() => onRename(folder)}
-                  onFavorite={handleFavorite}
-                  isFavorite={isFavorite}
-                />
-              </div>
-            )}
-          </div>
+          {menuOpen && (
+            <div
+              ref={menuRef}
+              className="absolute right-0 top-full mt-1 z-[9999] cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FolderMenu
+                folder={folder}
+                onClose={() => setMenuOpen(false)}
+                onDelete={() => onDelete(folder.id)}
+                onRename={() => onRename(folder)}
+                onFavorite={handleFavorite}
+                isFavorite={isFavorite}
+                onDownload={() => onDownload(folder)}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
