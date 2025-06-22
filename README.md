@@ -86,7 +86,7 @@ The diagram illustrates the relational structure connecting users, folders, and 
 
 | Method | Endpoint                      | Description                                           |
 |--------|-------------------------------|-------------------------------------------------------|
-| POST   | `/upload_file`                | Upload a single file (optionally into a folder)       |
+| POST   | `/upload_file`                | Upload a files (optionally into a folder)             |
 | POST   | `/upload_folder`              | Upload a ZIP containing nested folders and files      |
 | GET    | `/myfiles/`                   | Retrieve all files uploaded by the authenticated user |
 | GET    | `/myfiles/{file_id}`          | Get details of a file by its `file_id`                |
@@ -102,9 +102,8 @@ You can mark **any item (file or folder)** as a favorite for quick access.
 | Method | Endpoint                            | Description                                           |
 |--------|-------------------------------------|-------------------------------------------------------|
 | POST   | `/favorites/`                       | Mark a file or folder as favorite                     |
-| DELETE | `/favorites/}`                      | Unmark a file or folder from favorites                |
+| DELETE | `/favorites/`                       | Unmark a file or folder from favorites                |
 | GET    | `/favorites/`                       | List all favorite files and folders                   |
-
 
 
 ## ✨ Contributing
