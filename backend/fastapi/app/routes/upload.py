@@ -206,6 +206,18 @@ async def upload_zip_file(
             process_entry(item_abs, item, None)
 
     db.refresh(db_root_folder)
+    subfolder_infos = []
+    for sf in db_root_folder.subfolders:
+        item_count = len(sf.files) + len(sf.subfolders)
+        subfolder_info = SubFolderInfo(
+            id=sf.id,
+            name=sf.name,
+            parent_id=sf.parent_id,
+            created_at=sf.created_at,
+            date_modified=sf.date_modified,
+            item_count=item_count
+        )
+        subfolder_infos.append(subfolder_info)
 
     return FolderDetails(
         id=db_root_folder.id,
@@ -215,6 +227,6 @@ async def upload_zip_file(
         created_at=db_root_folder.created_at,
         date_modified=db_root_folder.date_modified,
         files=[FileInfo.model_validate(f) for f in db_root_folder.files],
-        subfolders=[SubFolderInfo.model_validate(sf) for sf in db_root_folder.subfolders],
-        item_count=len(db_root_folder.files) + len(db_root_folder.subfolders)
+        subfolders=subfolder_infos,
+        item_count=len(db_root_folder.files) + len(subfolder_infos)
     )
