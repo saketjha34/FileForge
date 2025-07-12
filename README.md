@@ -1,4 +1,4 @@
-# FileForge - Distributed File Management System
+# FileForge - Distributed File Storage System
 
 FileForge is a modern, secure, and distributed file management system built using **FastAPI** and **ReactJS**. It allows users to upload, organize, and manage files and folders in a structured hierarchy, with full support for **JWT authentication** and **Google OAuth login**. The system stores files in **MinIO (S3-compatible object storage)** and file metadata in **PostgreSQL**. 
 
