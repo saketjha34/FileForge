@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Folder, MoreVertical, Heart, Download } from "lucide-react";
 import FolderMenu from "./FolderMenu";
 
-
 const FolderListItem = ({
   folder,
   navigateToFolder,
@@ -40,7 +39,7 @@ const FolderListItem = ({
   }, []);
 
   const handleFavorite = (e) => {
-    e?.stopPropagation();
+    e.stopPropagation();
     onFavorite(folder.id, "folder");
     setMenuOpen(false);
   };
@@ -56,7 +55,7 @@ const FolderListItem = ({
   };
 
   const handleDownload = (e) => {
-    e?.stopPropagation();
+    e.stopPropagation();
     onDownload(folder);
     setMenuOpen(false);
   };
@@ -78,7 +77,7 @@ const FolderListItem = ({
               {folder.name}
             </div>
             <div className="text-sm text-gray-500 md:hidden">
-             {folder.item_count || 0} items
+              {folder.item_count || 0} items
             </div>
           </div>
         </div>
@@ -104,14 +103,14 @@ const FolderListItem = ({
         <div className="flex justify-end items-center gap-2 no-preview">
           <button
             onClick={handleDownload}
-            className="text-gray-400 hover:text-blue-600 p-1 transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-blue-600 p-1 transition-colors"
             title="Download"
           >
             <Download size={16} />
           </button>
           <button
             onClick={handleFavorite}
-            className={`p-1 cursor-pointer ${
+            className={`p-1 ${
               isFavorite
                 ? "text-red-500 hover:text-red-600"
                 : "text-gray-400 hover:text-gray-600"
@@ -132,7 +131,7 @@ const FolderListItem = ({
                 e.stopPropagation();
                 setMenuOpen(!menuOpen);
               }}
-              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+              className="text-gray-400 hover:text-gray-600 p-1"
               title="More options"
             >
               <MoreVertical size={16} />
@@ -141,7 +140,7 @@ const FolderListItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none cursor-pointer"
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg"
                 onClick={(e) => e.stopPropagation()}
               >
                 <FolderMenu

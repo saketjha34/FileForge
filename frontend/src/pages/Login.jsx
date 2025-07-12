@@ -49,13 +49,13 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white p-10 rounded-2xl shadow-xl">
-        <div className="mb-8 text-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md bg-white p-6 sm:p-10 rounded-2xl shadow-xl">
+        <div className="mb-6 sm:mb-8 text-center">
           <div className="flex justify-center mb-4">
-            <div className="bg-blue-100 p-3 rounded-full">
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
               <svg
-                className="w-10 h-10 text-blue-600"
+                className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -70,11 +70,15 @@ const Login = () => {
               </svg>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Welcome back</h1>
-          <p className="text-gray-500 mt-2">Sign in to access your files</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+            Welcome back
+          </h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">
+            Sign in to access your files
+          </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
           <div>
             <label
               htmlFor="username"
@@ -89,7 +93,7 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm sm:text-base"
             />
           </div>
           <div>
@@ -106,20 +110,20 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm sm:text-base"
             />
           </div>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition duration-300 disabled:opacity-70"
+            className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition duration-300 disabled:opacity-70 text-sm sm:text-base"
           >
             {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-600">
             Don't have an account?{" "}
             <Link
               to="/register"

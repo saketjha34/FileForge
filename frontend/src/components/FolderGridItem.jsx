@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Folder, MoreVertical, Check, Heart, Download } from "lucide-react";
 import FolderMenu from "./FolderMenu";
 
-
 const FolderGridItem = ({
   folder,
   onDownload,
@@ -56,6 +55,10 @@ const FolderGridItem = ({
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setMenuOpen(true);
+      }}
     >
       {/* Favorite icon */}
       <div
@@ -63,6 +66,7 @@ const FolderGridItem = ({
           isHovered || isFavorite ? "opacity-100" : "opacity-0"
         } transition-opacity cursor-pointer`}
         onClick={handleFavorite}
+        title="Toggle favorite"
       >
         <Heart
           className={`h-5 w-5 ${
@@ -83,21 +87,25 @@ const FolderGridItem = ({
             : "opacity-0"
         } no-preview z-10 cursor-pointer`}
         onClick={handleSelect}
+        title="Select folder"
       >
         {isSelected && <Check size={14} strokeWidth={3} />}
       </div>
 
-      {/* Folder preview/content */}
+      {/* Folder preview */}
       <div className="p-5 flex flex-col items-center overflow-visible">
         <div className="w-20 h-20 flex items-center justify-center bg-blue-50 rounded-xl mb-4 group-hover:bg-blue-100 transition-colors">
           <Folder className="text-blue-500" size={36} strokeWidth={1.5} />
         </div>
         <div className="text-center w-full">
-          <p className="text-sm font-medium text-gray-800 truncate px-2">
+          <p
+            className="text-sm font-medium text-gray-800 truncate px-2"
+            title={folder.name}
+          >
             {folder.name}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {folder.item_count || 0} items
+            {folder.item_count || 0} item{folder.item_count !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
@@ -105,7 +113,13 @@ const FolderGridItem = ({
       {/* Footer with actions */}
       <div className="border-t border-gray-100 px-4 py-3 flex justify-between items-center bg-gray-50/50 group-hover:bg-gray-100/50 transition-colors overflow-visible">
         <span className="text-xs text-gray-500">
-          {new Date(folder.created_at).toLocaleDateString()}
+          {folder.created_at
+            ? new Date(folder.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
+            : "Unknown Date"}
         </span>
         <div className="flex gap-2 relative overflow-visible">
           <button
@@ -114,7 +128,7 @@ const FolderGridItem = ({
               onDownload(folder);
             }}
             className="text-gray-400 hover:text-blue-600 p-1 transition-colors cursor-pointer"
-            title="Download"
+            title="Download folder"
           >
             <Download size={16} />
           </button>
@@ -126,6 +140,9 @@ const FolderGridItem = ({
             }}
             className="text-gray-500 hover:text-gray-700 p-1 transition-colors cursor-pointer"
             title="More options"
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            aria-label="Folder options"
           >
             <MoreVertical size={16} strokeWidth={2} />
           </button>

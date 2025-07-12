@@ -1,4 +1,3 @@
-// Register.js - Updated with enhanced styling
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import BASE_URL from "../config";
@@ -19,7 +18,6 @@ const Register = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-
     try {
       const formData = new URLSearchParams();
       formData.append("username", username);
@@ -50,14 +48,14 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white p-10 rounded-2xl shadow-xl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md bg-white p-6 sm:p-10 rounded-2xl shadow-xl">
         {/* Logo/Header */}
-        <div className="mb-8 text-center">
+        <div className="mb-6 sm:mb-8 text-center">
           <div className="flex justify-center mb-4">
-            <div className="bg-blue-100 p-3 rounded-full">
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
               <svg
-                className="w-10 h-10 text-blue-600"
+                className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -72,14 +70,16 @@ const Register = () => {
               </svg>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Create account</h1>
-          <p className="text-gray-500 mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+            Create account
+          </h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">
             Get started with your free account
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleRegister} className="space-y-6">
+        <form onSubmit={handleRegister} className="space-y-5 sm:space-y-6">
           <div>
             <label
               htmlFor="username"
@@ -91,7 +91,7 @@ const Register = () => {
               id="username"
               type="text"
               placeholder="Choose a username"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm sm:text-base"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -108,7 +108,7 @@ const Register = () => {
               id="password"
               type="password"
               placeholder="Create a password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm sm:text-base"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -117,40 +117,36 @@ const Register = () => {
               Use 8 or more characters with a mix of letters, numbers & symbols
             </p>
           </div>
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                required
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="terms" className="font-medium text-gray-700">
-                I agree to the{" "}
-                <a href="#" className="text-blue-600 hover:text-blue-500">
-                  Terms
-                </a>{" "}
-                and{" "}
-                <a href="#" className="text-blue-600 hover:text-blue-500">
-                  Privacy Policy
-                </a>
-              </label>
-            </div>
+          <div className="flex items-start text-sm">
+            <input
+              id="terms"
+              name="terms"
+              type="checkbox"
+              className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              required
+            />
+            <label htmlFor="terms" className="ml-2 text-gray-700">
+              I agree to the{" "}
+              <a href="#" className="text-blue-600 hover:text-blue-500">
+                Terms
+              </a>{" "}
+              and{" "}
+              <a href="#" className="text-blue-600 hover:text-blue-500">
+                Privacy Policy
+              </a>
+            </label>
           </div>
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition duration-300"
+            className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition duration-300 text-sm sm:text-base"
           >
             Create Account
           </button>
         </form>
 
         {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-600">
             Already have an account?{" "}
             <Link
               to="/login"

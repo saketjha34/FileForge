@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 const Breadcrumbs = ({
   currentFolder,
   setCurrentFolder,
-  folderPath,
+  folderPath = [],
   setFolderPath,
   isFavoritesPage = false,
 }) => {
@@ -29,7 +29,7 @@ const Breadcrumbs = ({
               setCurrentFolder(null);
               setFolderPath([]);
             }}
-            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200"
             aria-label="Root"
           >
             <HardDrive
@@ -43,7 +43,7 @@ const Breadcrumbs = ({
         </li>
 
         {folderPath.map((folder, index) => (
-          <li key={folder.id} className="flex items-center">
+          <li key={folder.id} className="flex items-center whitespace-nowrap">
             <ChevronRight
               className="mx-2 h-4 w-4 flex-shrink-0 text-gray-400"
               aria-hidden="true"
@@ -53,7 +53,7 @@ const Breadcrumbs = ({
               className={`font-medium transition-colors duration-200 ${
                 index === folderPath.length - 1
                   ? "text-blue-600 cursor-default"
-                  : "text-gray-600 hover:text-blue-600 cursor-pointer"
+                  : "text-gray-600 hover:text-blue-600"
               }`}
               aria-current={
                 index === folderPath.length - 1 ? "page" : undefined
@@ -68,7 +68,6 @@ const Breadcrumbs = ({
     </nav>
   );
 };
-
 
 
 export default Breadcrumbs;

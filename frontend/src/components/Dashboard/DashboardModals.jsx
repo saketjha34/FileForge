@@ -10,7 +10,7 @@ const DashboardModals = ({
   createFolder,
   showRenameModal,
   setShowRenameModal,
-  renameData,
+  renameData = { name: "", type: "" },
   setRenameData,
   renameItem,
 }) => {
@@ -28,7 +28,7 @@ const DashboardModals = ({
         show={showRenameModal}
         onClose={() => setShowRenameModal(false)}
         name={renameData.name}
-        setName={(name) => setRenameData({ ...renameData, name })}
+        setName={(name) => setRenameData((prev) => ({ ...prev, name }))}
         onRename={renameItem}
         type={renameData.type}
       />

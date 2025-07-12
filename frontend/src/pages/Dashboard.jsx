@@ -39,6 +39,7 @@ const Dashboard = ({ isFavoritesPage = false, customEmptyState, ...props }) => {
           ),
       };
     }
+
     return {
       filteredFolders: dashboardProps.filteredFolders,
       filteredFiles: dashboardProps.filteredFiles,
@@ -56,9 +57,9 @@ const Dashboard = ({ isFavoritesPage = false, customEmptyState, ...props }) => {
   const isEmpty = filteredFolders.length === 0 && filteredFiles.length === 0;
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-800">
+    <div className="flex flex-col sm:flex-row min-h-screen bg-gray-50 text-gray-800">
       <DashboardSidebar currentPath={location.pathname} {...dashboardProps} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-y-auto">
         <DashboardHeader {...dashboardProps} isSpecialPage={isFavoritesPage} />
         <DashboardContent
           {...dashboardProps}

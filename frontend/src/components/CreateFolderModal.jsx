@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { X } from "lucide-react";
 
 const CreateFolderModal = ({
@@ -11,19 +11,41 @@ const CreateFolderModal = ({
   if (!show) return null;
 
   const handleSubmit = (e) => {
-    e.preventDefault(); // prevent default form reload
-    createFolder();
+    e.preventDefault();
+    if (newFolderName.trim()) {
+      createFolder();
+    }
   };
 
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm backdrop-brightness-75">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm backdrop-brightness-75"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-folder-title"
+    >
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">New Folder</h3>
+          <h3
+            id="create-folder-title"
+            className="text-lg font-medium text-gray-900"
+          >
+            New Folder
+          </h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
+            aria-label="Close modal"
           >
             <X size={20} />
           </button>
@@ -31,7 +53,6 @@ const CreateFolderModal = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
-          {/* Input */}
           <div className="mb-4">
             <label
               htmlFor="folder-name"
@@ -60,7 +81,12 @@ const CreateFolderModal = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={!newFolderName.trim()}
+              className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white ${
+                newFolderName.trim()
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-blue-300 cursor-not-allowed"
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
             >
               Create
             </button>

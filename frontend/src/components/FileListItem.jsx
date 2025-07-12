@@ -35,35 +35,35 @@ const FileListItem = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
-
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
+
   const handleFavorite = (e) => {
-    e?.stopPropagation();
+    e.stopPropagation();
     onFavorite(file.id, "file");
     setMenuOpen(false);
   };
 
   const handleDelete = (e) => {
-    e?.stopPropagation();
+    e.stopPropagation();
     onDelete(file.id);
     setMenuOpen(false);
   };
 
   const handleRename = (e) => {
-    e?.stopPropagation();
+    e.stopPropagation();
     onRename(file);
     setMenuOpen(false);
   };
 
   const handleDownload = (e) => {
-    e?.stopPropagation();
+    e.stopPropagation();
     onDownload(file);
     setMenuOpen(false);
   };
@@ -109,7 +109,7 @@ const FileListItem = ({
         <div className="flex justify-end items-center gap-2 no-preview">
           <button
             onClick={handleDownload}
-            className="text-gray-400 hover:text-blue-600 p-1 transition-colors cursor-pointer"
+            className="text-gray-400 hover:text-blue-600 p-1 transition-colors"
             title="Download"
           >
             <Download size={16} />
@@ -117,7 +117,7 @@ const FileListItem = ({
 
           <button
             onClick={handleFavorite}
-            className={`p-1 cursor-pointer ${
+            className={`p-1 ${
               isFavorite
                 ? "text-red-500 hover:text-red-600"
                 : "text-gray-400 hover:text-gray-600"
@@ -134,7 +134,7 @@ const FileListItem = ({
                 e.stopPropagation();
                 setMenuOpen(!menuOpen);
               }}
-              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+              className="text-gray-400 hover:text-gray-600 p-1"
               title="More options"
             >
               <MoreVertical size={16} />
@@ -143,7 +143,7 @@ const FileListItem = ({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg focus:outline-none cursor-pointer"
+                className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg"
                 onClick={(e) => e.stopPropagation()}
               >
                 <FileMenu
@@ -163,6 +163,5 @@ const FileListItem = ({
     </tr>
   );
 };
-
 
 export default FileListItem;

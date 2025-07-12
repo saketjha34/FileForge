@@ -8,11 +8,19 @@ const FileMenu = forwardRef(
     ref
   ) => {
     const handleCopyLink = async (e) => {
-      
+      e.stopPropagation();
+      try {
+        const shareableLink = `${window.location.origin}/file/${file.id}`;
+        await navigator.clipboard.writeText(shareableLink);
+        toast.success("Link copied to clipboard");
+      } catch (err) {
+        toast.error("Failed to copy link");
+      }
+      onClose();
     };
 
     const handleAction = (e, action) => {
-      e?.stopPropagation();
+      e.stopPropagation();
       action();
       onClose();
     };
@@ -25,7 +33,7 @@ const FileMenu = forwardRef(
       >
         <button
           onClick={(e) => handleAction(e, onDownload)}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
         >
           <Download size={14} className="mr-3" />
           Download
@@ -33,7 +41,7 @@ const FileMenu = forwardRef(
 
         <button
           onClick={(e) => handleAction(e, onRename)}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
         >
           <Edit2 size={14} className="mr-3" />
           Rename
@@ -41,7 +49,7 @@ const FileMenu = forwardRef(
 
         <button
           onClick={handleCopyLink}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
         >
           <Link size={14} className="mr-3" />
           Copy Link
@@ -49,7 +57,7 @@ const FileMenu = forwardRef(
 
         <button
           onClick={(e) => handleAction(e, onFavorite)}
-          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left cursor-pointer"
+          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
         >
           <Star
             size={14}
@@ -63,7 +71,7 @@ const FileMenu = forwardRef(
 
         <button
           onClick={(e) => handleAction(e, onDelete)}
-          className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left cursor-pointer"
+          className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
         >
           <Trash2 size={14} className="mr-3" />
           Delete
@@ -73,6 +81,5 @@ const FileMenu = forwardRef(
   }
 );
 
-FileMenu.displayName = "FileMenu";
 
 export default FileMenu;

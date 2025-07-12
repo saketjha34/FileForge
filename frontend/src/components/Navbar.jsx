@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -20,12 +20,18 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  const userName = useMemo(() => localStorage.getItem("name") || "User", []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
-  const user = (localStorage.getItem("name")) || '';
-  // Close profile dropdown when clicking outside
+
+  // Close profile dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest(".profile-menu")) {
@@ -74,16 +80,18 @@ const Navbar = () => {
               <div className="relative profile-menu ml-2">
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  aria-expanded={showProfileMenu}
+                  aria-label="User menu"
                   className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 text-sm font-medium hover:bg-blue-200 transition-colors"
                 >
-                  {user?.charAt(0).toUpperCase() || "U"}
+                  {userName.charAt(0).toUpperCase()}
                 </button>
 
                 {showProfileMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200 transition ease-out duration-100 transform origin-top-right scale-95">
                     <div className="px-4 py-2 border-b border-gray-100">
                       <p className="text-sm font-medium text-gray-900">
-                        {user || "User"}
+                        {userName}
                       </p>
                     </div>
                     <Link
@@ -139,6 +147,7 @@ const Navbar = () => {
           className="md:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none transition-colors"
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle menu"
+          aria-expanded={isOpen}
         >
           {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -175,7 +184,7 @@ const Navbar = () => {
                 Profile
               </Link>
               <div className="px-4 py-2 text-xs text-gray-500 border-t border-gray-100">
-                Signed in as {user?.email || "User"}
+                Signed in as {userName}
               </div>
               <button
                 onClick={() => {
